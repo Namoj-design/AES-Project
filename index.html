@@ -1,0 +1,223 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>AES-GCM + ECDH Demo — Alice ↔ Bob</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 16px; background:#f6f7fb }
+    h1 { font-size:18px }
+    .row { display:flex; gap:16px; margin-bottom:12px }
+    .box { background:white; border:1px solid #ddd; padding:12px; border-radius:8px; width:48% }
+    textarea { width:100%; height:80px; font-family:monospace; }
+    input[type=text] { width:100%; }
+    button { margin-top:8px; }
+    .log { background:#111; color:#bcd; padding:8px; height:140px; overflow:auto; font-family:monospace; font-size:12px }
+    label { display:block; margin-top:8px; font-size:13px }
+    .small { font-size:12px; color:#666 }
+  </style>
+</head>
+<body>
+  <h1>AES-GCM (256) + ECDH (P-256) demo — Alice ↔ Bob</h1>
+  <p class="small">Steps: generate keys for each party → exchange public keys (copy/paste) → derive shared AES key → send encrypted messages (uses fresh 96-bit IV per message).</p>
+
+  <div class="row">
+    <div class="box" id="alice">
+      <h3>Alice</h3>
+      <button id="alice-gen">Generate Alice Keypair</button>
+      <label>Alice public key (base64)</label>
+      <textarea id="alice-pub" readonly></textarea>
+      <label>Paste Bob public key here</label>
+      <textarea id="alice-peer"></textarea>
+      <button id="alice-derive">Derive AES key (Alice)</button>
+      <div id="alice-status" class="small"></div>
+
+      <label>Plaintext to send</label>
+      <input type="text" id="alice-plaintext" placeholder="Hello Bob" />
+      <button id="alice-encrypt">Encrypt (Alice)</button>
+
+      <label>Ciphertext to send (base64 iv|ct|tag)</label>
+      <textarea id="alice-ciphertext" readonly></textarea>
+    </div>
+
+    <div class="box" id="bob">
+      <h3>Bob</h3>
+      <button id="bob-gen">Generate Bob Keypair</button>
+      <label>Bob public key (base64)</label>
+      <textarea id="bob-pub" readonly></textarea>
+      <label>Paste Alice public key here</label>
+      <textarea id="bob-peer"></textarea>
+      <button id="bob-derive">Derive AES key (Bob)</button>
+      <div id="bob-status" class="small"></div>
+
+      <label>Paste ciphertext received from Alice</label>
+      <textarea id="bob-recv"></textarea>
+      <button id="bob-decrypt">Decrypt (Bob)</button>
+
+      <label>Decrypted plaintext</label>
+      <input type="text" id="bob-plaintext" readonly />
+    </div>
+  </div>
+
+  <h3>Activity log</h3>
+  <div id="log" class="log"></div>
+
+<script>
+/* --- Utilities --- */
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const log = (...args) => {
+  const el = document.getElementById('log');
+  el.textContent += args.join(' ') + '\\n';
+  el.scrollTop = el.scrollHeight;
+};
+
+/* --- WebCrypto helpers for ECDH + AES-GCM --- */
+async function genECDH() {
+  return crypto.subtle.generateKey(
+    { name: 'ECDH', namedCurve: 'P-256' },
+    true,
+    ['deriveKey', 'deriveBits']
+  );
+}
+async function exportPub(key) {
+  const raw = await crypto.subtle.exportKey('raw', key);
+  return toB64(raw);
+}
+async function importPub(b64) {
+  const raw = fromB64(b64).buffer;
+  return crypto.subtle.importKey('raw', raw, { name:'ECDH', namedCurve:'P-256' }, true, []);
+}
+// Derive AES-GCM-256 key using deriveKey (WebCrypto internally uses HKDF-like behavior for deriveKey when possible)
+async function deriveAESGCMKey(privKey, peerPubKey) {
+  const derived = await crypto.subtle.deriveKey(
+    { name:'ECDH', public: peerPubKey },
+    privKey,
+    { name:'AES-GCM', length: 256 },
+    false, // not extractable
+    ['encrypt','decrypt']
+  );
+  return derived;
+}
+function randomIV() {
+  const iv = new Uint8Array(12); // 96-bit recommended
+  crypto.getRandomValues(iv);
+  return iv;
+}
+async function aesGcmEncrypt(key, plaintext, aad) {
+  const iv = randomIV();
+  const ct = await crypto.subtle.encrypt(
+    { name:'AES-GCM', iv, additionalData: aad ? enc.encode(aad) : undefined, tagLength: 128 },
+    key,
+    enc.encode(plaintext)
+  );
+  // WebCrypto returns ciphertext||tag in a single ArrayBuffer
+  return { iv: toB64(iv.buffer), ct: toB64(ct) };
+}
+async function aesGcmDecrypt(key, ivB64, ctB64, aad) {
+  try {
+    const iv = fromB64(ivB64);
+    const ct = fromB64(ctB64);
+    const plain = await crypto.subtle.decrypt(
+      { name:'AES-GCM', iv, additionalData: aad ? enc.encode(aad) : undefined, tagLength: 128 },
+      key,
+      ct.buffer
+    );
+    return dec.decode(plain);
+  } catch(e) {
+    throw new Error('Decryption/auth failed: ' + e.message);
+  }
+}
+
+/* --- Alice state --- */
+let aliceKeys = null;
+let aliceAES = null;
+
+/* --- Bob state --- */
+let bobKeys = null;
+let bobAES = null;
+
+/* --- Wire up UI --- */
+document.getElementById('alice-gen').onclick = async () => {
+  aliceKeys = await genECDH();
+  const pub = await exportPub(aliceKeys.publicKey);
+  document.getElementById('alice-pub').value = pub;
+  log('[Alice] keypair generated.');
+  document.getElementById('alice-status').textContent = 'Keypair ready. Share public key with Bob.';
+};
+document.getElementById('bob-gen').onclick = async () => {
+  bobKeys = await genECDH();
+  const pub = await exportPub(bobKeys.publicKey);
+  document.getElementById('bob-pub').value = pub;
+  log('[Bob] keypair generated.');
+  document.getElementById('bob-status').textContent = 'Keypair ready. Share public key with Alice.';
+};
+
+document.getElementById('alice-derive').onclick = async () => {
+  try {
+    if (!aliceKeys) throw new Error('Alice keys not generated');
+    const peerB64 = document.getElementById('alice-peer').value.trim();
+    if (!peerB64) throw new Error('Paste Bob public key first');
+    const peerKey = await importPub(peerB64);
+    aliceAES = await deriveAESGCMKey(aliceKeys.privateKey, peerKey);
+    document.getElementById('alice-status').textContent = 'AES key derived (Alice).';
+    log('[Alice] Derived AES key from ECDH.');
+  } catch(e) {
+    alert(e.message);
+  }
+};
+
+document.getElementById('bob-derive').onclick = async () => {
+  try {
+    if (!bobKeys) throw new Error('Bob keys not generated');
+    const peerB64 = document.getElementById('bob-peer').value.trim();
+    if (!peerB64) throw new Error('Paste Alice public key first');
+    const peerKey = await importPub(peerB64);
+    bobAES = await deriveAESGCMKey(bobKeys.privateKey, peerKey);
+    document.getElementById('bob-status').textContent = 'AES key derived (Bob).';
+    log('[Bob] Derived AES key from ECDH.');
+  } catch(e) {
+    alert(e.message);
+  }
+};
+
+document.getElementById('alice-encrypt').onclick = async () => {
+  try {
+    if (!aliceAES) throw new Error('Alice has not derived AES key');
+    const pt = document.getElementById('alice-plaintext').value || '';
+    const aad = 'alice|msg'; // example associated data
+    const {iv, ct} = await aesGcmEncrypt(aliceAES, pt, aad);
+    // For transport include iv and ct (both base64); ct contains auth tag
+    const payload = iv + '|' + ct;
+    document.getElementById('alice-ciphertext').value = payload;
+    log('[Alice] Encrypted message. IV & ciphertext ready to send.');
+  } catch(e) {
+    alert(e.message);
+  }
+};
+
+document.getElementById('bob-decrypt').onclick = async () => {
+  try {
+    if (!bobAES) throw new Error('Bob has not derived AES key');
+    const blob = document.getElementById('bob-recv').value.trim();
+    if (!blob) throw new Error('Paste ciphertext (iv|ct) from Alice');
+    const [ivB64, ctB64] = blob.split('|');
+    if (!ivB64 || !ctB64) throw new Error('Bad format. Expect iv|ct');
+    const aad = 'alice|msg';
+    const pt = await aesGcmDecrypt(bobAES, ivB64, ctB64, aad);
+    document.getElementById('bob-plaintext').value = pt;
+    log('[Bob] Successfully decrypted message:', pt);
+  } catch(e) {
+    log('[Bob] Decrypt error:', e.message);
+    alert('Decrypt failed: ' + e.message);
+  }
+};
+
+/* quick helper: when one side copies public key, paste into the other's peer box */
+document.getElementById('alice-pub').onclick = function() { this.select(); };
+document.getElementById('bob-pub').onclick = function() { this.select(); };
+
+</script>
+</body>
+</html>
