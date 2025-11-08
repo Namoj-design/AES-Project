@@ -1,6 +1,7 @@
 // client/script.js
 import * as C from './utils/crypto.js';
 import * as UI from './utils/ui.js';
+import * as KeyRegistry from './utils/keyregistry.js';
 
 const leftGenBtn = document.getElementById('left-gen');
 const leftSendPubBtn = document.getElementById('left-sendpub');
@@ -27,16 +28,94 @@ const wsConnectBtn = document.getElementById('ws-connect');
 const wsStatus = document.getElementById('ws-status');
 const logPre = document.getElementById('log');
 
+const leftConnectMetaMaskBtn = document.getElementById('left-connect-metamask');
+const leftRegisterKeyBtn = document.getElementById('left-register-key');
+const leftVerifyPeerBtn = document.getElementById('left-verify-peer');
+
+const rightConnectMetaMaskBtn = document.getElementById('right-connect-metamask');
+const rightRegisterKeyBtn = document.getElementById('right-register-key');
+const rightVerifyPeerBtn = document.getElementById('right-verify-peer');
+
 let ws = null;
 
 // state objects
-const left = { keys: null, pubRaw: null, aes: null };
-const right = { keys: null, pubRaw: null, aes: null };
+const left = { keys: null, pubRaw: null, aes: null, walletAddress: null };
+const right = { keys: null, pubRaw: null, aes: null, walletAddress: null };
 
 // ------- helpers -------
 function toB64(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))); }
 function fromB64ToBuf(s) { return C.base64ToArrayBuffer(s); }
 function log(...args) { UI.logToConsole(logPre, ...args); }
+
+// ------- MetaMask integration -------
+async function connectMetaMask(side) {
+  if (!window.ethereum) {
+    log(`${side} MetaMask not detected.`);
+    alert('MetaMask not detected. Please install MetaMask extension.');
+    return;
+  }
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (accounts.length === 0) {
+      log(`${side} MetaMask: No accounts found.`);
+      alert('No MetaMask accounts found.');
+      return;
+    }
+    const walletAddress = accounts[0];
+    if (side === 'left') {
+      left.walletAddress = walletAddress;
+      log(`Left MetaMask connected: ${walletAddress}`);
+      leftStatus.textContent = `MetaMask connected: ${walletAddress}`;
+    } else {
+      right.walletAddress = walletAddress;
+      log(`Right MetaMask connected: ${walletAddress}`);
+      rightStatus.textContent = `MetaMask connected: ${walletAddress}`;
+    }
+  } catch (e) {
+    log(`${side} MetaMask connection error:`, e.message);
+    alert(`MetaMask connection error: ${e.message}`);
+  }
+}
+
+async function registerKeyOnChain(side) {
+  try {
+    const state = side === 'left' ? left : right;
+    if (!state.keys || !state.pubRaw) throw new Error('Generate keypair first');
+    if (!state.walletAddress) throw new Error('Connect MetaMask first');
+    const pubKeyB64 = C.arrayBufferToBase64(state.pubRaw.buffer);
+    log(`${side} registering ECDH public key on chain for wallet ${state.walletAddress}...`);
+    await KeyRegistry.registerECDHKey(state.walletAddress, pubKeyB64);
+    log(`${side} ECDH public key registered on chain.`);
+    if (side === 'left') {
+      leftStatus.textContent = 'Public key registered on chain';
+    } else {
+      rightStatus.textContent = 'Public key registered on chain';
+    }
+  } catch (e) {
+    log(`${side} register key error:`, e.message);
+    alert(`${side} register key error: ${e.message}`);
+  }
+}
+
+async function verifyPeerKeyOnChain(side) {
+  try {
+    const state = side === 'left' ? left : right;
+    const peerPubB64 = side === 'left' ? leftPeerTa.value.trim() : rightPeerTa.value.trim();
+    if (!peerPubB64) throw new Error('Paste peer public key first');
+    log(`${side} verifying peer public key on chain...`);
+    const verified = await KeyRegistry.verifyOnChainKey(peerPubB64);
+    if (verified) {
+      log(`${side} peer public key is registered on chain.`);
+      alert(`${side} peer public key is verified on chain.`);
+    } else {
+      log(`${side} peer public key NOT found on chain.`);
+      alert(`${side} peer public key NOT found on chain.`);
+    }
+  } catch (e) {
+    log(`${side} verify peer error:`, e.message);
+    alert(`${side} verify peer error: ${e.message}`);
+  }
+}
 
 // ------- WebSocket relay handling -------
 wsConnectBtn.onclick = () => {
@@ -196,6 +275,15 @@ rightSend.onclick = async () => {
   rightInput.value = '';
   log('Right sent encrypted message (relay).');
 };
+
+// ------- MetaMask button handlers -------
+leftConnectMetaMaskBtn.onclick = () => connectMetaMask('Left');
+leftRegisterKeyBtn.onclick = () => registerKeyOnChain('Left');
+leftVerifyPeerBtn.onclick = () => verifyPeerKeyOnChain('Left');
+
+rightConnectMetaMaskBtn.onclick = () => connectMetaMask('Right');
+rightRegisterKeyBtn.onclick = () => registerKeyOnChain('Right');
+rightVerifyPeerBtn.onclick = () => verifyPeerKeyOnChain('Right');
 
 // small UI features: clicking public key selects text for copy
 [leftPubTa, rightPubTa].forEach(el => el.addEventListener('click', () => el.select()));
