@@ -1,17 +1,3 @@
-/**
- * server.js
- * Simple WebSocket relay server.
- * - Accepts JSON messages from clients and broadcasts them to other connected clients.
- * - Does NOT decrypt or inspect payloads (the clients encrypt/decrypt).
- *
- * Usage:
- *   cd server
- *   npm install
- *   node server.js
- *
- * The server listens on port 8080 by default.
- */
-
 const WebSocket = require('ws');
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
