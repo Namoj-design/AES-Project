@@ -1,26 +1,42 @@
 // client/utils/crypto.js
-// Exports: genECDH, exportPublicKeyBase64, importPublicKeyBase64,
-// deriveAesKeyFromECDH, encryptAesGcmBase64, decryptAesGcmBase64
+// Core cryptographic primitives for CipherChat
+// ECDH (P-256) → HKDF-SHA256 → AES-GCM(256)
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-/** generate an ECDH P-256 keypair (extractable=false for private) */
+// Enable console logging for debugging
+const DEBUG = false;
+const debug = (...a) => { if (DEBUG) console.log('[crypto]', ...a); };
+
+/* -------------------------------------------------------------
+   ECDH key generation and import/export
+------------------------------------------------------------- */
+
+/** Generate a new ECDH key pair using P-256 curve */
 export async function genECDH() {
-  return crypto.subtle.generateKey(
-    { name: "ECDH", namedCurve: "P-256" },
-    true, // public extractable so we can export; private remains extractable true for demo (set false in prod)
-    ["deriveKey", "deriveBits"]
-  );
+  try {
+    debug('Generating ECDH keypair...');
+    const keyPair = await crypto.subtle.generateKey(
+      { name: "ECDH", namedCurve: "P-256" },
+      true,
+      ["deriveKey", "deriveBits"]
+    );
+    debug('ECDH keypair generated.');
+    return keyPair;
+  } catch (err) {
+    console.error('genECDH failed:', err);
+    throw err;
+  }
 }
 
-/** export CryptoKey public part to base64 (raw) */
+/** Export ECDH public key as Base64 (raw format) */
 export async function exportPublicKeyBase64(pubKey) {
-  const raw = await crypto.subtle.exportKey("raw", pubKey); // ArrayBuffer
+  const raw = await crypto.subtle.exportKey("raw", pubKey);
   return arrayBufferToBase64(raw);
 }
 
-/** import raw public key (base64) */
+/** Import ECDH public key from Base64 (raw) */
 export async function importPublicKeyBase64(b64) {
   const raw = base64ToArrayBuffer(b64);
   return crypto.subtle.importKey(
@@ -32,82 +48,102 @@ export async function importPublicKeyBase64(b64) {
   );
 }
 
+/* -------------------------------------------------------------
+   AES key derivation from ECDH shared secret
+------------------------------------------------------------- */
+
 /**
- * derive AES-GCM 256-bit key from myPrivateKey and peerPublicKey.
- * Steps:
- *  1. deriveBits(ECDH) -> raw shared secret (256 bits)
- *  2. compute deterministic salt (optional) or use empty salt; here we use HKDF with salt = SHA-256(sorted(pubA||pubB))
- *  3. import shared bits as HKDF key material and derive AES-GCM key
+ * Derive a 256-bit AES-GCM key using ECDH and HKDF.
+ * Both peers derive the same key without exchanging it.
  */
-export async function deriveAesKeyFromECDH(myPrivateKey, peerPublicKey, myPublicRaw, peerPublicRaw) {
-  // 1) derive raw shared bits - 256 bits
-  const sharedBits = await crypto.subtle.deriveBits(
-    { name: "ECDH", public: peerPublicKey },
-    myPrivateKey,
-    256
-  ); // ArrayBuffer
+export async function deriveAesKeyFromECDH(myPrivate, peerPublic, myPubRaw, peerPubRaw) {
+  try {
+    const sharedBits = await crypto.subtle.deriveBits(
+      { name: "ECDH", public: peerPublic },
+      myPrivate,
+      256
+    );
 
-  // 2) deterministic salt: SHA-256(concat(min(pubA,pubB), max(...)))
-  // both parties must compute same salt without further exchange.
-  const a = new Uint8Array(myPublicRaw);
-  const b = new Uint8Array(peerPublicRaw);
-  const concat = compareUint8Arrays(a, b) <= 0 ? concatUint8(a, b) : concatUint8(b, a);
-  const salt = await crypto.subtle.digest("SHA-256", concat);
+    // Deterministic salt from both public keys
+    const a = new Uint8Array(myPubRaw);
+    const b = new Uint8Array(peerPubRaw);
+    const concat = compareUint8Arrays(a, b) <= 0 ? concatUint8(a, b) : concatUint8(b, a);
+    const salt = await crypto.subtle.digest("SHA-256", concat);
 
-  // 3) HKDF: import sharedBits as raw key, derive AES-GCM 256 key
-  const hkKey = await crypto.subtle.importKey("raw", sharedBits, { name: "HKDF" }, false, ["deriveKey"]);
-  const aesKey = await crypto.subtle.deriveKey(
-    {
-      name: "HKDF",
-      hash: "SHA-256",
-      salt: salt,
-      info: encoder.encode("CipherChat AES-GCM key")
-    },
-    hkKey,
-    { name: "AES-GCM", length: 256 },
-    false, // not extractable
-    ["encrypt", "decrypt"]
-  );
-  return aesKey;
+    // HKDF → AES-GCM(256)
+    const hkKey = await crypto.subtle.importKey("raw", sharedBits, "HKDF", false, ["deriveKey"]);
+    const aesKey = await crypto.subtle.deriveKey(
+      {
+        name: "HKDF",
+        hash: "SHA-256",
+        salt,
+        info: encoder.encode("CipherChat AES-GCM key")
+      },
+      hkKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"]
+    );
+    debug('Derived AES-GCM key.');
+    return aesKey;
+  } catch (err) {
+    console.error('deriveAesKeyFromECDH failed:', err);
+    throw err;
+  }
 }
 
-/** AES-GCM encrypt -> returns { iv: base64, ct: base64 } where ct includes auth tag */
+/* -------------------------------------------------------------
+   AES-GCM encryption/decryption
+------------------------------------------------------------- */
+
+/** Encrypt plaintext → {iv, ct} (both Base64) */
 export async function encryptAesGcmBase64(aesKey, plaintext, aad = undefined) {
-  const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV (recommended)
-  const ctBuf = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv, additionalData: aad ? encoder.encode(aad) : undefined, tagLength: 128 },
-    aesKey,
-    encoder.encode(plaintext)
-  );
-  return {
-    iv: arrayBufferToBase64(iv.buffer),
-    ct: arrayBufferToBase64(ctBuf)
-  };
+  try {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ctBuf = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv, additionalData: aad ? encoder.encode(aad) : undefined, tagLength: 128 },
+      aesKey,
+      encoder.encode(plaintext)
+    );
+    return { iv: arrayBufferToBase64(iv.buffer), ct: arrayBufferToBase64(ctBuf) };
+  } catch (err) {
+    console.error('encryptAesGcmBase64 failed:', err);
+    throw err;
+  }
 }
 
-/** AES-GCM decrypt with base64 inputs */
+/** Decrypt ciphertext → plaintext string */
 export async function decryptAesGcmBase64(aesKey, ivB64, ctB64, aad = undefined) {
-  const iv = base64ToArrayBuffer(ivB64);
-  const ct = base64ToArrayBuffer(ctB64);
-  const plainBuf = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: new Uint8Array(iv), additionalData: aad ? encoder.encode(aad) : undefined, tagLength: 128 },
-    aesKey,
-    ct
-  );
-  return decoder.decode(plainBuf);
+  try {
+    const iv = base64ToArrayBuffer(ivB64);
+    const ct = base64ToArrayBuffer(ctB64);
+    const plainBuf = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: new Uint8Array(iv), additionalData: aad ? encoder.encode(aad) : undefined, tagLength: 128 },
+      aesKey,
+      ct
+    );
+    return decoder.decode(plainBuf);
+  } catch (err) {
+    console.error('decryptAesGcmBase64 failed:', err);
+    throw err;
+  }
 }
 
-/* ----------------- helpers ----------------- */
+/* -------------------------------------------------------------
+   Helpers: Base64 & Uint8 utils
+------------------------------------------------------------- */
 
 export function arrayBufferToBase64(buf) {
   return btoa(String.fromCharCode(...new Uint8Array(buf)));
 }
+
 export function base64ToArrayBuffer(b64) {
   const bin = atob(b64);
   const arr = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
   return arr.buffer;
 }
+
 function compareUint8Arrays(a, b) {
   const n = Math.min(a.length, b.length);
   for (let i = 0; i < n; i++) {
@@ -116,6 +152,7 @@ function compareUint8Arrays(a, b) {
   }
   return a.length - b.length;
 }
+
 function concatUint8(a, b) {
   const out = new Uint8Array(a.length + b.length);
   out.set(a, 0);
