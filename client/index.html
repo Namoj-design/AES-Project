@@ -9,8 +9,13 @@
 </head>
 <body>
   <header>
-    <h1>CipherChat</h1>
-    <p class="muted">ECDH (P-256) → HKDF-SHA256 → AES-GCM(256). Relay server never sees plaintext.</p>
+    <div class="header-left">
+      <h1>CipherChat</h1>
+      <p class="muted">ECDH (P-256) → HKDF-SHA256 → AES-GCM(256). Relay server never sees plaintext.</p>
+    </div>
+    <div class="header-right">
+      <button id="theme-toggle" aria-pressed="false" title="Toggle light / dark mode">🌙 Dark</button>
+    </div>
   </header>
 
   <main class="layout">

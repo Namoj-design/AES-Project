@@ -81,6 +81,41 @@ function log(...parts) {
   if (el) el.addEventListener('click', () => el.select());
 });
 
+// ---------------------- Theme Toggle Backend Connection ----------------------
+const themeToggleBtn = $('theme-toggle');
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener('click', () => {
+    try {
+      const currentTheme = document.body.classList.contains('light') ? 'light' : 'dark';
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      document.body.classList.toggle('light', newTheme === 'light');
+      themeToggleBtn.textContent = newTheme === 'light' ? '🌞 Light' : '🌙 Dark';
+
+      // Notify relay of theme change
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        sendRelay({ type: 'theme', theme: newTheme });
+      }
+
+      log('Theme toggled to:', newTheme);
+    } catch (err) {
+      log('Theme toggle failed:', err?.message || err);
+    }
+  });
+}
+
+// Handle incoming theme change from relay
+async function handleThemeUpdate(theme) {
+  try {
+    const themeToggleBtn = $('theme-toggle');
+    document.body.classList.toggle('light', theme === 'light');
+    if (themeToggleBtn) themeToggleBtn.textContent = theme === 'light' ? '🌞 Light' : '🌙 Dark';
+    log('Theme updated remotely to:', theme);
+  } catch (err) {
+    log('handleThemeUpdate failed:', err?.message || err);
+  }
+}
+
 // ---------------------- WebSocket relay ----------------------
 function ensureWsConnected() {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -186,6 +221,11 @@ function sendRelay(obj) {
 async function handleIncomingRelay(msg) {
   try {
     if (!msg || !msg.type) return;
+
+    if (msg.type === 'theme') {
+      handleThemeUpdate(msg.theme);
+      return;
+    }
 
     if (msg.type === 'pubkey') {
       log('relay: pubkey from', msg.side);
