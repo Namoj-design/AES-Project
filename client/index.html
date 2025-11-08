@@ -80,13 +80,19 @@
   </main>
 
   <section class="console">
-    <div>
-      <label>WebSocket (relay) URL:</label>
-      <input id="ws-url" value="ws://localhost:8080" />
-      <button id="ws-connect">Connect</button>
-      <span id="ws-status">disconnected</span>
+    <h3>🔗 Relay Server Connection</h3>
+    <p class="muted">Connect to your WebSocket relay server to enable encrypted communication between Alice and Bob.</p>
+    <div class="relay-controls">
+      <label for="ws-url">Relay WebSocket URL:</label>
+      <input id="ws-url" value="ws://localhost:8080" placeholder="ws://localhost:8080" />
+      <button id="ws-connect">🔌 Connect</button>
+      <button id="ws-disconnect" disabled>❌ Disconnect</button>
+      <span id="ws-status" class="status disconnected">Disconnected</span>
     </div>
-    <pre id="log"></pre>
+    <div class="relay-log">
+      <h4>Activity Log</h4>
+      <pre id="log"></pre>
+    </div>
   </section>
 
   <script type="module" src="script.js"></script>
