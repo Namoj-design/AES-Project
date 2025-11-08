@@ -76,7 +76,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    margin: 40px 0;
+    margin: 25px 0; /* reduced margin for compact look */
     z-index: 2;
     position: relative;
   }
@@ -86,9 +86,9 @@ body {
     background: rgba(10, 15, 20, 0.8);
     border: 1px solid #00ff88;
     border-radius: 12px;
-    padding: 20px;
-    width: 420px;
-    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+    padding: 16px; /* reduced from 20px */
+    width: 380px;  /* reduced from 420px */
+    box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
   }
   
   label {
@@ -166,14 +166,14 @@ body {
     border-top: 1px solid #00ffb3;
     padding: 10px;
     color: #00ffaa;
-    height: 95px; /* Slightly reduced */
+    height: 85px; /* reduced for better spacing */
     overflow-y: auto;
     font-size: 12px;
     position: fixed;
-    bottom: 40px; /* Lifted upward for visibility */
+    bottom: 70px; /* lifted from 40px to avoid overlap */
     left: 50%;
     transform: translateX(-50%);
-    width: 85%;
+    width: 80%; /* slightly narrower for better centering */
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 255, 200, 0.3);
     z-index: 5;
