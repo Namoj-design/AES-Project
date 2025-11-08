@@ -382,7 +382,7 @@ if (rightSend) rightSend.addEventListener('click', async () => {
     const msg = rightInput?.value?.trim();
     if (!msg) return;
     const { iv, ct } = await C.encryptAesGcmBase64(right.aes, msg);
-    if (rightChat) UI.appendBubble(rightChat, `🟢 You: ${msg}`, 'right');
+    if (rightChat) UI.appendBubble(rightChat, ` You: ${msg}`, 'right');
     sendRelay({ type: 'cipher', from: 'right', target: 'left', iv, ct });
     rightInput.value = '';
     log('Bob sent encrypted message to Alice:', ct.slice(0, 40) + '...');
@@ -519,7 +519,7 @@ if (leftDecryptBtn) leftDecryptBtn.addEventListener('click', async () => {
     const data = latestCipher.left;
     if (!data || !left.aes) { alert('No cipher or key to decrypt.'); return; }
     const pt = await C.decryptAesGcmBase64(left.aes, data.iv, data.ct);
-    UI.appendBubble(leftChat, `🟢 Decrypted from Bob: ${pt}`, 'right');
+    UI.appendBubble(leftChat, `Decrypted from Bob: ${pt}`, 'right');
     leftNotifyText.textContent = 'Message decrypted successfully.';
     leftDecryptBtn.disabled = true;
     log('Alice manually decrypted message:', pt);
@@ -533,7 +533,7 @@ if (rightDecryptBtn) rightDecryptBtn.addEventListener('click', async () => {
     const data = latestCipher.right;
     if (!data || !right.aes) { alert('No cipher or key to decrypt.'); return; }
     const pt = await C.decryptAesGcmBase64(right.aes, data.iv, data.ct);
-    UI.appendBubble(rightChat, `🟢 Decrypted from Alice: ${pt}`, 'left');
+    UI.appendBubble(rightChat, `Decrypted from Alice: ${pt}`, 'left');
     rightNotifyText.textContent = 'Message decrypted successfully.';
     rightDecryptBtn.disabled = true;
     log('Bob manually decrypted message:', pt);
