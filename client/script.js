@@ -45,9 +45,21 @@ let latestCipher = {
   right: null
 };
 
-// Identify this client as "left" or "right" based on DOM presence
-const role = document.getElementById('left-chat') ? 'left' : 'right';
-log('👤 This client role detected as:', role);
+// Improved role detection logic: dynamically assign roles per tab
+let role;
+if (!localStorage.getItem('clientRole')) {
+  // First tab opened becomes Alice (left)
+  localStorage.setItem('clientRole', 'left');
+  role = 'left';
+} else if (localStorage.getItem('clientRole') === 'left' && !sessionStorage.getItem('isRight')) {
+  // Second tab opened becomes Bob (right)
+  role = 'right';
+  sessionStorage.setItem('isRight', 'true');
+} else {
+  // Default fallback to opposite of stored role
+  role = localStorage.getItem('clientRole') === 'left' ? 'right' : 'left';
+}
+log('👤 Client role auto-assigned as:', role);
 
 // WebSocket & log
 const wsUrlInput = $('ws-url');
@@ -223,7 +235,7 @@ function sendRelay(data) {
   }
 }
 
-// Handle all messages received from relay with role-based routing
+// Handle all messages received from relay with robust logging and role-based routing
 async function handleIncomingRelay(msg) {
   try {
     if (!msg || !msg.type) return;
@@ -240,17 +252,18 @@ async function handleIncomingRelay(msg) {
         return;
 
       case 'cipher': {
-        const { from, target, iv, ct } = msg;
-        if (!iv || !ct) {
-          log('⚠️ Received invalid cipher packet');
-          return;
-        }
+        const from = msg.from || 'unknown';
+        const target = msg.target || 'unknown';
+        const iv = msg.iv || '';
+        const ct = msg.ct || '';
 
-        const ivShort = iv.slice(0, 8) + '...';
-        const ctShort = ct.slice(0, 40) + '...';
+        // Log message routing details
+        log('📨 Relay delivered cipher packet → from:', from, 'to:', target, '| current role:', role);
 
-        // Role-based check: process only if intended for this client
         if (role === target) {
+          const ivShort = iv.slice(0, 8) + '...';
+          const ctShort = ct.slice(0, 40) + '...';
+
           if (role === 'right') {
             latestCipher.right = { iv, ct };
             rightNotifyText.textContent = '📩 New encrypted message received from Alice.';
@@ -260,7 +273,7 @@ async function handleIncomingRelay(msg) {
               `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}\nClick 🔔 View Cipher & Decrypt.`,
               'left'
             );
-            log('📨 Bob (right) received ciphertext from Alice.');
+            log('✅ Bob (right) displayed ciphertext from Alice.');
           }
 
           if (role === 'left') {
@@ -272,10 +285,10 @@ async function handleIncomingRelay(msg) {
               `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}\nClick 🔔 View Cipher & Decrypt.`,
               'right'
             );
-            log('📨 Alice (left) received ciphertext from Bob.');
+            log('✅ Alice (left) displayed ciphertext from Bob.');
           }
         } else {
-          log('💡 Ignored message not meant for this client (role:', role, ', target:', target, ')');
+          log(`💡 Ignored message — not for this client (role=${role}, target=${target})`);
         }
 
         return;
