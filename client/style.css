@@ -178,6 +178,27 @@ pre#log {
   font-size: 0.85rem;
 }
 
+/* Style for Decrypt Button inside message bubbles */
+.decrypt-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-top: 6px;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.decrypt-btn:hover {
+  background: #2563eb;
+}
+
+.decrypt-btn:active {
+  transform: scale(0.96);
+}
+
 @media (max-width: 900px) {
   .panel {
     width: 100%;
