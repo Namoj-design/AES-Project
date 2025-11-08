@@ -2,63 +2,56 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>AES-GCM + ECDH Demo — Alice ↔ Bob</title>
+  <title>AES-GCM + ECDH Chat — Alice ↔ Bob</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>AES-GCM (256) + ECDH (P-256) Demo — Alice ↔ Bob</h1>
-  <p class="small">
-    Steps: generate keys for each party → exchange public keys (copy/paste) → derive shared AES key → send encrypted messages (fresh 96-bit IV per message).
-  </p>
+  <header>
+    <h1>AES-GCM (256) + ECDH (P-256) Chat Demo</h1>
+    <p>Generate keys → derive shared AES key → exchange encrypted messages locally.</p>
+  </header>
 
-  <div class="row">
-    <!-- Alice -->
-    <div class="box" id="alice">
-      <h3>Alice</h3>
-      <button id="alice-gen">Generate Alice Keypair</button>
+  <main class="chat-container">
+    <!-- Alice panel -->
+    <section class="user-panel" id="alice-panel">
+      <h2>🟣 Alice</h2>
+      <div class="controls">
+        <button id="alice-gen">Generate Keypair</button>
+        <textarea id="alice-pub" readonly placeholder="Alice public key (auto)"></textarea>
+        <textarea id="alice-peer" placeholder="Paste Bob's public key here"></textarea>
+        <button id="alice-derive">Derive Shared Key</button>
+      </div>
 
-      <label>Alice public key (base64)</label>
-      <textarea id="alice-pub" readonly></textarea>
+      <div class="chat-box" id="alice-chat"></div>
 
-      <label>Paste Bob public key here</label>
-      <textarea id="alice-peer"></textarea>
+      <div class="composer">
+        <input id="alice-input" placeholder="Type message for Bob..." />
+        <button id="alice-send">Send</button>
+      </div>
+    </section>
 
-      <button id="alice-derive">Derive AES key (Alice)</button>
-      <div id="alice-status" class="small"></div>
+    <!-- Bob panel -->
+    <section class="user-panel" id="bob-panel">
+      <h2>🔵 Bob</h2>
+      <div class="controls">
+        <button id="bob-gen">Generate Keypair</button>
+        <textarea id="bob-pub" readonly placeholder="Bob public key (auto)"></textarea>
+        <textarea id="bob-peer" placeholder="Paste Alice's public key here"></textarea>
+        <button id="bob-derive">Derive Shared Key</button>
+      </div>
 
-      <label>Plaintext to send</label>
-      <input type="text" id="alice-plaintext" placeholder="Hello Bob" />
-      <button id="alice-encrypt">Encrypt (Alice)</button>
+      <div class="chat-box" id="bob-chat"></div>
 
-      <label>Ciphertext to send (base64 iv|ct|tag)</label>
-      <textarea id="alice-ciphertext" readonly></textarea>
-    </div>
+      <div class="composer">
+        <input id="bob-input" placeholder="Type message for Alice..." />
+        <button id="bob-send">Send</button>
+      </div>
+    </section>
+  </main>
 
-    <!-- Bob -->
-    <div class="box" id="bob">
-      <h3>Bob</h3>
-      <button id="bob-gen">Generate Bob Keypair</button>
-
-      <label>Bob public key (base64)</label>
-      <textarea id="bob-pub" readonly></textarea>
-
-      <label>Paste Alice public key here</label>
-      <textarea id="bob-peer"></textarea>
-
-      <button id="bob-derive">Derive AES key (Bob)</button>
-      <div id="bob-status" class="small"></div>
-
-      <label>Paste ciphertext received from Alice</label>
-      <textarea id="bob-recv"></textarea>
-      <button id="bob-decrypt">Decrypt (Bob)</button>
-
-      <label>Decrypted plaintext</label>
-      <input type="text" id="bob-plaintext" readonly />
-    </div>
-  </div>
-
-  <h3>Activity log</h3>
-  <div id="log" class="log"></div>
+  <footer>
+    <p>Local crypto only — no server. Uses WebCrypto AES-GCM + ECDH P-256.</p>
+  </footer>
 
   <script src="script.js"></script>
 </body>

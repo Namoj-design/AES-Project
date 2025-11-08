@@ -1,55 +1,92 @@
-body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  padding: 16px;
-  background: #f6f7fb;
-  color: #111;
+body{
+  margin:0;
+  font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background:#f4f6fa;
+  color:#222;
+  display:flex;
+  flex-direction:column;
+  min-height:100vh;
 }
-h1 { font-size: 18px; margin-bottom: 4px; }
-.small { font-size: 12px; color: #666; }
-
-.row {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
+header{
+  text-align:center;
+  background:#20232a;
+  color:#eee;
+  padding:12px 8px;
 }
-.box {
-  background: #fff;
-  border: 1px solid #ddd;
-  padding: 12px;
-  border-radius: 8px;
-  width: 48%;
-  min-width: 340px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+h1{margin:0;font-size:18px}
+.chat-container{
+  flex:1;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-evenly;
+  padding:12px;
+  gap:16px;
 }
-textarea {
-  width: 100%;
-  height: 80px;
-  font-family: monospace;
-  resize: vertical;
+.user-panel{
+  background:#fff;
+  border:1px solid #ccc;
+  border-radius:10px;
+  width:45%;
+  min-width:360px;
+  display:flex;
+  flex-direction:column;
+  padding:10px;
+  box-shadow:0 3px 8px rgba(0,0,0,0.1);
 }
-input[type=text] {
-  width: 100%;
-  padding: 4px;
+.user-panel h2{margin-top:0}
+.controls textarea{
+  width:100%;
+  font-family:monospace;
+  height:60px;
+  resize:vertical;
 }
-button {
-  margin-top: 8px;
-  background: #007bff;
-  color: #fff;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 4px;
-  cursor: pointer;
+.controls button{margin-top:4px;margin-bottom:8px}
+.chat-box{
+  flex:1;
+  background:#eef1f6;
+  border-radius:8px;
+  padding:8px;
+  overflow-y:auto;
+  margin-bottom:6px;
+  display:flex;
+  flex-direction:column;
 }
-button:hover { background: #0056b3; }
-.log {
-  background: #111;
-  color: #bcd;
-  padding: 8px;
-  height: 160px;
-  overflow: auto;
-  font-family: monospace;
-  font-size: 12px;
-  border-radius: 6px;
+.bubble{
+  margin:4px 0;
+  padding:6px 10px;
+  border-radius:10px;
+  max-width:80%;
+  word-wrap:break-word;
 }
-label { display: block; margin-top: 8px; font-size: 13px; }
+.bubble.alice{
+  background:#dbeafe;
+  align-self:flex-end;
+}
+.bubble.bob{
+  background:#fce7f3;
+  align-self:flex-start;
+}
+.composer{
+  display:flex;
+  gap:6px;
+}
+.composer input{
+  flex:1;
+  padding:8px;
+  border:1px solid #bbb;
+  border-radius:6px;
+}
+.composer button{
+  padding:8px 12px;
+  border:none;
+  border-radius:6px;
+  background:#007bff;
+  color:#fff;
+  cursor:pointer;
+}
+footer{
+  text-align:center;
+  font-size:12px;
+  color:#666;
+  padding:6px;
+}
