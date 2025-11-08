@@ -131,47 +131,56 @@ function sendRelay(obj) {
 async function handleIncomingRelay(msg) {
   try {
     if (!msg || !msg.type) return;
+
     if (msg.type === 'pubkey') {
       log('relay: pubkey from', msg.side);
       if (msg.side === 'left' && leftPubTa && !leftPubTa.value) leftPubTa.value = msg.pub;
       if (msg.side === 'right' && rightPubTa && !rightPubTa.value) rightPubTa.value = msg.pub;
       return;
     }
+
     if (msg.type === 'cipher') {
-      // target indicates which panel should receive
       const targetSide = msg.target;
-      log('relay: cipher for', targetSide);
+      const { iv, ct, from } = msg;
+      const ivShort = iv.slice(0, 10) + '...';
+      const ctShort = ct.slice(0, 50) + '...';
+
       if (targetSide === 'left') {
-        // left receives
-        if (leftChat) UI.appendBubble(leftChat, '(encrypted received)', 'right');
+        // Alice receives encrypted message from Bob
+        if (leftChat) {
+          UI.appendBubble(leftChat, `🔒 Encrypted message from Bob:\nCiphertext: ${ctShort}\nIV: ${ivShort}`, 'right');
+        }
         if (left.aes) {
           try {
-            const pt = await C.decryptAesGcmBase64(left.aes, msg.iv, msg.ct);
-            if (leftChat) UI.appendBubble(leftChat, pt, 'right');
-            log('Left decrypted a message');
+            const pt = await C.decryptAesGcmBase64(left.aes, iv, ct);
+            UI.appendBubble(leftChat, `🟢 Decrypted: ${pt}`, 'right');
+            log('Alice decrypted message from Bob:', pt);
           } catch (e) {
-            log('Left decrypt failed:', e?.message || e);
+            log('Alice decrypt failed:', e?.message || e);
           }
         } else {
-          log('Left AES key not ready');
+          log('Alice AES key not ready. Ciphertext stored.');
         }
       } else if (targetSide === 'right') {
-        if (rightChat) UI.appendBubble(rightChat, '(encrypted received)', 'left');
+        // Bob receives encrypted message from Alice
+        if (rightChat) {
+          UI.appendBubble(rightChat, `🔒 Encrypted message from Alice:\nCiphertext: ${ctShort}\nIV: ${ivShort}`, 'left');
+        }
         if (right.aes) {
           try {
-            const pt = await C.decryptAesGcmBase64(right.aes, msg.iv, msg.ct);
-            if (rightChat) UI.appendBubble(rightChat, pt, 'left');
-            log('Right decrypted a message');
+            const pt = await C.decryptAesGcmBase64(right.aes, iv, ct);
+            UI.appendBubble(rightChat, `🟢 Decrypted: ${pt}`, 'left');
+            log('Bob decrypted message from Alice:', pt);
           } catch (e) {
-            log('Right decrypt failed:', e?.message || e);
+            log('Bob decrypt failed:', e?.message || e);
           }
         } else {
-          log('Right AES key not ready');
+          log('Bob AES key not ready. Ciphertext stored.');
         }
       }
       return;
     }
-    // other message types
+
     log('relay: unknown message type', msg.type);
   } catch (err) {
     log('handleIncomingRelay error:', err?.message || err);
@@ -222,17 +231,17 @@ if (leftDeriveBtn) leftDeriveBtn.addEventListener('click', async () => {
   }
 });
 
+// Left (Sita) send message
 if (leftSend) leftSend.addEventListener('click', async () => {
   try {
     if (!left.aes) { alert('Left must derive AES key first'); return; }
     const msg = leftInput?.value?.trim();
     if (!msg) return;
     const { iv, ct } = await C.encryptAesGcmBase64(left.aes, msg);
-    if (leftChat) UI.appendBubble(leftChat, msg, 'left');
-    // send ciphertext to relay (target right)
+    if (leftChat) UI.appendBubble(leftChat, `🟢 You: ${msg}`, 'left');
     sendRelay({ type: 'cipher', from: 'left', target: 'right', iv, ct });
-    if (leftInput) leftInput.value = '';
-    log('Left sent encrypted message (relay).');
+    leftInput.value = '';
+    log('Alice sent encrypted message to Bob:', ct.slice(0, 40) + '...');
   } catch (err) {
     log('Left send failed:', err?.message || err);
     alert('Send failed: ' + (err?.message || err));
@@ -283,16 +292,17 @@ if (rightDeriveBtn) rightDeriveBtn.addEventListener('click', async () => {
   }
 });
 
+// Right (Ram) send message
 if (rightSend) rightSend.addEventListener('click', async () => {
   try {
     if (!right.aes) { alert('Right must derive AES key first'); return; }
     const msg = rightInput?.value?.trim();
     if (!msg) return;
     const { iv, ct } = await C.encryptAesGcmBase64(right.aes, msg);
-    if (rightChat) UI.appendBubble(rightChat, msg, 'left');
+    if (rightChat) UI.appendBubble(rightChat, `🟢 You: ${msg}`, 'right');
     sendRelay({ type: 'cipher', from: 'right', target: 'left', iv, ct });
-    if (rightInput) rightInput.value = '';
-    log('Right sent encrypted message (relay).');
+    rightInput.value = '';
+    log('Bob sent encrypted message to Alice:', ct.slice(0, 40) + '...');
   } catch (err) {
     log('Right send failed:', err?.message || err);
     alert('Send failed: ' + (err?.message || err));
