@@ -8,6 +8,36 @@
   --bubble-text: #f3f4f6;     /* Light text on bubbles */
 }
 
+/* Global Theme Variables and Transitions */
+:root {
+  --bg: #0b0b0c;
+  --card: #1a1a1c;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --accent: #3b82f6;
+  --left: #1e3a8a;
+  --right: #581c87;
+  --bubble-text: #f3f4f6;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+ /* Light mode overrides */
+body.light {
+  --bg: #f4f7fb;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --left: #dbeafe;
+  --right: #fee2e2;
+  --bubble-text: #0f172a;
+}
+
 * {
   box-sizing: border-box;
 }
