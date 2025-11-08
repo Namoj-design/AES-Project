@@ -2,57 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>AES-GCM + ECDH Chat — Alice ↔ Bob</title>
+  <title>CipherChat — E2E demo (ECDH + HKDF + AES-GCM)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
-    <h1>AES-GCM (256) + ECDH (P-256) Chat Demo</h1>
-    <p>Generate keys → derive shared AES key → exchange encrypted messages locally.</p>
+    <h1>CipherChat</h1>
+    <p class="muted">ECDH (P-256) → HKDF-SHA256 → AES-GCM(256). Relay server never sees plaintext.</p>
   </header>
 
-  <main class="chat-container">
-    <!-- Alice panel -->
-    <section class="user-panel" id="alice-panel">
-      <h2>🟣 Alice</h2>
+  <main class="layout">
+    <section class="panel" id="left-panel">
+      <h2>Left (Alice)</h2>
+
       <div class="controls">
-        <button id="alice-gen">Generate Keypair</button>
-        <textarea id="alice-pub" readonly placeholder="Alice public key (auto)"></textarea>
-        <textarea id="alice-peer" placeholder="Paste Bob's public key here"></textarea>
-        <button id="alice-derive">Derive Shared Key</button>
+        <button id="left-gen">Generate Keypair</button>
+        <button id="left-sendpub" disabled>Broadcast Public Key</button>
+        <textarea id="left-pub" readonly placeholder="Alice public key (base64)"></textarea>
+        <textarea id="left-peer" placeholder="Paste peer public key here"></textarea>
+        <button id="left-derive">Derive AES Key</button>
+        <div id="left-status" class="status">No key</div>
       </div>
 
-      <div class="chat-box" id="alice-chat"></div>
+      <div class="chat" id="left-chat"></div>
 
       <div class="composer">
-        <input id="alice-input" placeholder="Type message for Bob..." />
-        <button id="alice-send">Send</button>
+        <input id="left-input" placeholder="Message to Bob">
+        <button id="left-send" disabled>Send</button>
       </div>
     </section>
 
-    <!-- Bob panel -->
-    <section class="user-panel" id="bob-panel">
-      <h2>🔵 Bob</h2>
+    <section class="panel" id="right-panel">
+      <h2>Right (Bob)</h2>
+
       <div class="controls">
-        <button id="bob-gen">Generate Keypair</button>
-        <textarea id="bob-pub" readonly placeholder="Bob public key (auto)"></textarea>
-        <textarea id="bob-peer" placeholder="Paste Alice's public key here"></textarea>
-        <button id="bob-derive">Derive Shared Key</button>
+        <button id="right-gen">Generate Keypair</button>
+        <button id="right-sendpub" disabled>Broadcast Public Key</button>
+        <textarea id="right-pub" readonly placeholder="Bob public key (base64)"></textarea>
+        <textarea id="right-peer" placeholder="Paste peer public key here"></textarea>
+        <button id="right-derive">Derive AES Key</button>
+        <div id="right-status" class="status">No key</div>
       </div>
 
-      <div class="chat-box" id="bob-chat"></div>
+      <div class="chat" id="right-chat"></div>
 
       <div class="composer">
-        <input id="bob-input" placeholder="Type message for Alice..." />
-        <button id="bob-send">Send</button>
+        <input id="right-input" placeholder="Message to Alice">
+        <button id="right-send" disabled>Send</button>
       </div>
     </section>
   </main>
 
-  <footer>
-    <p>Local crypto only — no server. Uses WebCrypto AES-GCM + ECDH P-256.</p>
-  </footer>
+  <section class="console">
+    <div>
+      <label>WebSocket (relay) URL:</label>
+      <input id="ws-url" value="ws://localhost:8080" />
+      <button id="ws-connect">Connect</button>
+      <span id="ws-status">disconnected</span>
+    </div>
+    <pre id="log"></pre>
+  </section>
 
-  <script src="script.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
