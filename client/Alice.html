@@ -1,23 +1,35 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🔐 CipherChat — Alice</title>
+  <div class="relay-header">
+    <input type="text" id="ws-url" value="ws://localhost:8080" />
+    <button id="ws-connect">🔗 Connect</button>
+    <span id="ws-status" class="status"></span>
+  </div>
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="dark">
-  <!-- Animated binary background -->
+  <!-- Matrix background -->
   <div class="matrix" id="matrix"></div>
 
+  <!-- Header -->
   <header>
     <h1>🔐 CipherChat — Alice</h1>
     <button id="theme-toggle" class="theme-toggle">🌙 Dark</button>
   </header>
 
+  <!-- Main Container -->
   <div class="container">
     <div class="box" id="alice">
       <h3>👩‍💻 Alice</h3>
       <button id="left-gen">Generate Alice Keypair</button>
+
       <label>Alice public key (base64)</label>
       <textarea id="left-pub" readonly></textarea>
 
@@ -28,7 +40,8 @@
       <div id="left-status" class="status"></div>
 
       <label>Plaintext to send</label>
-      <input type="text" id="left-input" placeholder="Message for Bob..." />
+      <input type="text" id="left-input" placeholder="Type your message to Bob..." />
+
       <button id="left-send">Send</button>
 
       <label>Chat Window</label>
@@ -39,19 +52,12 @@
     </div>
   </div>
 
-  <footer>
-    <div class="relay-panel">
-      <h3>🔗 Relay Connection</h3>
-      <input type="text" id="ws-url" value="ws://localhost:8080" />
-      <button id="ws-connect">Connect Relay</button>
-      <span id="ws-status" class="status"></span>
-    </div>
-  </footer>
 
+  <!-- Activity Log -->
   <div id="log" class="log"></div>
 
+  <!-- Matrix Animation Script -->
   <script>
-    // Matrix animation effect
     const matrix = document.getElementById("matrix");
     const numStreams = 50;
 
@@ -68,6 +74,7 @@
     }
   </script>
 
+  <!-- Script -->
   <script type="module" src="./script.js"></script>
 </body>
 </html>

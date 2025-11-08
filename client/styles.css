@@ -33,7 +33,7 @@ body {
     color: #00ff88;
     font-size: 16px;
     font-weight: bold;
-    opacity: 0.6;
+    opacity: 0.5;
     animation: matrixRain linear infinite;
   }
   
@@ -42,12 +42,13 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(10, 15, 20, 0.8);
+    background: rgba(10, 15, 20, 0.85);
     color: #00ffb3;
     padding: 10px 20px;
     box-shadow: 0 0 20px rgba(0, 255, 200, 0.3);
     z-index: 2;
     position: relative;
+    gap: 15px;
   }
   
   header h1 {
@@ -71,32 +72,35 @@ body {
     background: rgba(0, 255, 179, 0.3);
   }
   
-  /* === Main Container === */
+  /* === Main Container (chat area) === */
   .container {
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    margin: 25px 0; /* reduced margin for compact look */
+    margin-top: 20px;
+    height: calc(100vh - 280px); /* leaves space for relay + log */
+    overflow-y: auto;
     z-index: 2;
     position: relative;
   }
   
-  /* === Chat Box === */
+  /* === Adjust Box for Visibility === */
   .box {
-    background: rgba(10, 15, 20, 0.8);
+    background: rgba(10, 15, 20, 0.85);
     border: 1px solid #00ff88;
     border-radius: 12px;
-    padding: 16px; /* reduced from 20px */
-    width: 380px;  /* reduced from 420px */
-    box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+    padding: 18px 18px 80px 18px; /* extra bottom padding to fit buttons */
+    width: 400px;
+    min-height: 340px;
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    position: relative; /* important for button positioning */
+    z-index: 3;
   }
   
-  label {
-    font-size: 13px;
-    color: #7efcd2;
-  }
-  
-  /* === Input Areas === */
+  /* === Input and Text Areas === */
   input, textarea {
     width: 100%;
     background: rgba(0, 0, 0, 0.8);
@@ -115,6 +119,42 @@ body {
     outline: none;
   }
   
+  /* === Chat Area Scrollable === */
+  .chat {
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #00ffb3;
+    border-radius: 8px;
+    height: 160px;
+    overflow-y: auto;
+    padding: 8px;
+    font-family: monospace;
+    color: #9efad6;
+    margin-bottom: 10px;
+  }
+  /* === Decrypt Button Fixed Inside Box === */
+  #left-decrypt-btn,
+  #right-decrypt-btn {
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    background: linear-gradient(90deg, #00ffaa, #00eaff);
+    color: #000;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    padding: 10px 0;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 255, 200, 0.4);
+    transition: transform 0.2s ease, background 0.3s ease;
+  }
+
+  #left-decrypt-btn:hover,
+  #right-decrypt-btn:hover {
+    transform: translateX(-50%) scale(1.03);
+  }
+  
   /* === Buttons === */
   button {
     background: linear-gradient(90deg, #00ff88, #00ccff);
@@ -122,7 +162,7 @@ body {
     border: none;
     border-radius: 6px;
     padding: 8px 12px;
-    margin-top: 5px;
+    margin-top: 6px;
     cursor: pointer;
     font-weight: bold;
     box-shadow: 0 0 10px rgba(0, 255, 200, 0.4);
@@ -134,24 +174,11 @@ body {
     transform: scale(1.03);
   }
   
-  /* === Chat Area === */
-  .chat {
-    background: rgba(0, 0, 0, 0.7);
-    border: 1px solid #00ffb3;
-    border-radius: 8px;
-    height: 160px;
-    overflow-y: auto;
-    padding: 8px;
-    font-family: monospace;
-    white-space: pre-wrap;
-    color: #9efad6;
-  }
-  
   /* === Notifications and Status === */
   .notify {
     color: #ffea00;
     font-size: 13px;
-    margin-top: 8px;
+    margin-top: 6px;
   }
   
   .status {
@@ -160,22 +187,73 @@ body {
     margin-top: 4px;
   }
   
+  /* === Compact Relay Header Panel === */
+  .relay-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 255, 179, 0.08);
+    border: 1px solid rgba(0, 255, 179, 0.3);
+    border-radius: 6px;
+    padding: 4px 8px;
+    box-shadow: 0 0 8px rgba(0, 255, 200, 0.3);
+    height: 32px;
+  }
+
+  .relay-header input {
+    width: 140px;
+    font-size: 11px;
+    padding: 3px 5px;
+    border-radius: 4px;
+    border: 1px solid #00ffb3;
+    background: rgba(0, 0, 0, 0.8);
+    color: #00ffaa;
+  }
+
+  .relay-header input:focus {
+    outline: none;
+    box-shadow: 0 0 6px #00ffcc;
+  }
+
+  .relay-header button {
+    background: linear-gradient(90deg, #00ff88, #00ccff);
+    border: none;
+    color: #000;
+    font-weight: 600;
+    font-size: 11px;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.3s ease;
+  }
+
+  .relay-header button:hover {
+    background: linear-gradient(90deg, #00ffaa, #00eaff);
+    transform: scale(1.03);
+  }
+
+  .relay-header .status {
+    font-size: 11px;
+    color: #00ffaa;
+    margin-left: 4px;
+  }
+  
   /* === Activity Log (bottom console) === */
   .log {
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.8);
     border-top: 1px solid #00ffb3;
     padding: 10px;
     color: #00ffaa;
-    height: 85px; /* reduced for better spacing */
+    height: 80px;
     overflow-y: auto;
     font-size: 12px;
     position: fixed;
-    bottom: 70px; /* lifted from 40px to avoid overlap */
+    bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 80%; /* slightly narrower for better centering */
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 255, 200, 0.3);
+    width: 90%;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 -2px 15px rgba(0, 255, 200, 0.3);
     z-index: 5;
   }
   
@@ -196,59 +274,3 @@ body {
     border: 1px solid #ccc;
     box-shadow: none;
   }
-/* === Relay Connection Panel === */
-.relay-panel {
-  position: fixed;
-  bottom: 150px; /* Above the activity log */
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(10, 15, 20, 0.85);
-  border: 1px solid #00ffb3;
-  border-radius: 10px;
-  padding: 10px 15px;
-  width: 320px;
-  text-align: center;
-  box-shadow: 0 0 10px rgba(0, 255, 200, 0.3);
-  z-index: 10;
-}
-
-.relay-panel h3 {
-  font-size: 14px;
-  margin-bottom: 8px;
-  color: #00ffb3;
-  text-shadow: 0 0 6px #00ffaa;
-}
-
-.relay-panel input {
-  width: 80%;
-  font-size: 12px;
-  padding: 5px 6px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #00ffaa;
-  border: 1px solid #00ffb3;
-  border-radius: 6px;
-}
-
-.relay-panel input:focus {
-  outline: none;
-  box-shadow: 0 0 8px #00ffcc;
-}
-
-.relay-panel button {
-  margin-top: 8px;
-  font-size: 13px;
-  padding: 6px 12px;
-  background: linear-gradient(90deg, #00ff88, #00ccff);
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  color: #000;
-  font-weight: 600;
-  box-shadow: 0 0 10px rgba(0, 255, 200, 0.4);
-  transition: transform 0.2s ease, background 0.3s ease;
-}
-
-.relay-panel button:hover {
-  background: linear-gradient(90deg, #00ffaa, #00eaff);
-  transform: scale(1.05);
-}

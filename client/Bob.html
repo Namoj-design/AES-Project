@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <title>🔐 CipherChat — Bob</title>
+  <div class="relay-header">
+    <input type="text" id="ws-url" value="ws://localhost:8080" />
+    <button id="ws-connect">🔗 Connect</button>
+    <span id="ws-status" class="status"></span>
+  </div>
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="dark">
@@ -38,16 +44,6 @@
       <button id="right-decrypt-btn" disabled>🔓 View Cipher & Decrypt</button>
     </div>
   </div>
-
-  <footer>
-    <div class="relay-panel">
-      <h3>🔗 Relay Connection</h3>
-      <input type="text" id="ws-url" value="ws://localhost:8080" />
-      <button id="ws-connect">Connect Relay</button>
-      <span id="ws-status" class="status"></span>
-    </div>
-  </footer>
-
   <div id="log" class="log"></div>
 
   <script>
