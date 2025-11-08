@@ -1,51 +1,41 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AES-GCM Encryption Demo</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Secure Chat — ECDH + HKDF + AES-GCM</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>🔒 AES-GCM Encryption Demo</h1>
-    <p>Interactive visualization of AES-256 encryption using the Web Crypto API.</p>
-  </header>
+  <div class="app">
+    <header class="header">
+      <h1>Secure Chat Demo</h1>
+      <p class="muted">ECDH (P-256) → HKDF-SHA256 → AES-GCM(256). Open in two tabs and chat securely.</p>
+    </header>
 
-  <main>
-    <section class="panel">
-      <h2>Message Input</h2>
-      <textarea id="plaintext" placeholder="Type your secret message..."></textarea>
-      <button id="generate-key">Generate AES-256 Key</button>
-      <button id="encrypt-btn">Encrypt Message</button>
+    <section class="controls">
+      <input id="name" placeholder="Your name (Alice / Bob)" />
+      <button id="connect">Connect</button>
+      <button id="genKey" disabled>Generate ECDH Keypair</button>
+      <button id="sendPub" disabled>Broadcast Public Key</button>
+      <div id="status" class="status">Disconnected</div>
+      <div class="note">NOTE: This demo does not authenticate public keys — for real use add signatures or TLS validation.</div>
     </section>
 
-    <section class="panel">
-      <h2>Encryption Output</h2>
-      <div class="output-block">
-        <label>Base64 Ciphertext:</label>
-        <textarea id="ciphertext" readonly></textarea>
-      </div>
-      <div class="output-block">
-        <label>Initialization Vector (IV):</label>
-        <input id="iv-display" readonly>
-      </div>
-      <button id="decrypt-btn">Decrypt Message</button>
-      <div class="output-block">
-        <label>Decrypted Text:</label>
-        <input id="decrypted" readonly>
+    <section class="chat">
+      <div id="messages" class="messages"></div>
+
+      <div class="composer">
+        <input id="message" placeholder="Type a message..." />
+        <button id="send" disabled>Send</button>
       </div>
     </section>
 
-    <section class="log-panel">
-      <h2>Encryption Console</h2>
-      <div id="log"></div>
+    <section class="console">
+      <h3>Console</h3>
+      <pre id="log"></pre>
     </section>
-  </main>
-
-  <footer>
-    <p>Powered by Web Crypto API • AES-GCM (256-bit)</p>
-  </footer>
+  </div>
 
   <script src="script.js"></script>
 </body>
