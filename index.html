@@ -3,58 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alice ↔ Bob | AES-GCM + ECDH Secure Chat</title>
+  <title>AES-GCM Encryption Demo</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>AES-GCM (256) + ECDH (P-256) — Secure Message Exchange</h1>
-  <p class="info">Generate keys → exchange public keys → derive shared AES key → encrypt/decrypt messages.</p>
+  <header>
+    <h1>🔒 AES-GCM Encryption Demo</h1>
+    <p>Interactive visualization of AES-256 encryption using the Web Crypto API.</p>
+  </header>
 
-  <div class="container">
-    <div class="box" id="alice">
-      <h2>Alice</h2>
-      <button id="alice-gen">Generate Alice Keypair</button>
+  <main>
+    <section class="panel">
+      <h2>Message Input</h2>
+      <textarea id="plaintext" placeholder="Type your secret message..."></textarea>
+      <button id="generate-key">Generate AES-256 Key</button>
+      <button id="encrypt-btn">Encrypt Message</button>
+    </section>
 
-      <label>Alice Public Key (Base64)</label>
-      <textarea id="alice-pub" readonly></textarea>
+    <section class="panel">
+      <h2>Encryption Output</h2>
+      <div class="output-block">
+        <label>Base64 Ciphertext:</label>
+        <textarea id="ciphertext" readonly></textarea>
+      </div>
+      <div class="output-block">
+        <label>Initialization Vector (IV):</label>
+        <input id="iv-display" readonly>
+      </div>
+      <button id="decrypt-btn">Decrypt Message</button>
+      <div class="output-block">
+        <label>Decrypted Text:</label>
+        <input id="decrypted" readonly>
+      </div>
+    </section>
 
-      <label>Paste Bob Public Key</label>
-      <textarea id="alice-peer"></textarea>
-      <button id="alice-derive">Derive AES Key</button>
-      <p id="alice-status" class="status"></p>
+    <section class="log-panel">
+      <h2>Encryption Console</h2>
+      <div id="log"></div>
+    </section>
+  </main>
 
-      <label>Plaintext</label>
-      <input type="text" id="alice-plaintext" placeholder="Hello Bob">
-
-      <button id="alice-encrypt">Encrypt Message</button>
-
-      <label>Generated Ciphertext (iv|ciphertext)</label>
-      <textarea id="alice-ciphertext" readonly></textarea>
-    </div>
-
-    <div class="box" id="bob">
-      <h2>Bob</h2>
-      <button id="bob-gen">Generate Bob Keypair</button>
-
-      <label>Bob Public Key (Base64)</label>
-      <textarea id="bob-pub" readonly></textarea>
-
-      <label>Paste Alice Public Key</label>
-      <textarea id="bob-peer"></textarea>
-      <button id="bob-derive">Derive AES Key</button>
-      <p id="bob-status" class="status"></p>
-
-      <label>Paste Ciphertext (iv|ciphertext)</label>
-      <textarea id="bob-recv"></textarea>
-      <button id="bob-decrypt">Decrypt Message</button>
-
-      <label>Decrypted Plaintext</label>
-      <input type="text" id="bob-plaintext" readonly>
-    </div>
-  </div>
-
-  <h3>Activity Log</h3>
-  <div id="log" class="log"></div>
+  <footer>
+    <p>Powered by Web Crypto API • AES-GCM (256-bit)</p>
+  </footer>
 
   <script src="script.js"></script>
 </body>
