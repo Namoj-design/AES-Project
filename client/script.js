@@ -90,6 +90,7 @@ function ensureWsConnected() {
   return true;
 }
 
+// WebSocket relay connection handler with UI updates
 wsConnectBtn?.addEventListener('click', () => {
   try {
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -99,22 +100,46 @@ wsConnectBtn?.addEventListener('click', () => {
     const url = (wsUrlInput && wsUrlInput.value) ? wsUrlInput.value.trim() : 'ws://localhost:8080';
     ws = new WebSocket(url);
 
+    if (wsStatus) {
+      wsStatus.textContent = 'connecting...';
+      wsStatus.classList.remove('connected', 'disconnected');
+    }
+
     ws.onopen = () => {
-      if (wsStatus) wsStatus.textContent = 'connected';
-      log('WS connected to', url);
+      if (wsStatus) {
+        wsStatus.textContent = 'Connected';
+        wsStatus.classList.add('connected');
+        wsStatus.classList.remove('disconnected');
+      }
+      if ($('ws-disconnect')) $('ws-disconnect').disabled = false;
+      if (wsConnectBtn) wsConnectBtn.disabled = true;
+      log('✅ WebSocket connected to', url);
     };
 
     ws.onclose = () => {
-      if (wsStatus) wsStatus.textContent = 'disconnected';
-      log('WS disconnected');
+      if (wsStatus) {
+        wsStatus.textContent = 'Disconnected';
+        wsStatus.classList.add('disconnected');
+        wsStatus.classList.remove('connected');
+      }
+      if ($('ws-disconnect')) $('ws-disconnect').disabled = true;
+      if (wsConnectBtn) wsConnectBtn.disabled = false;
+      log('🔴 WebSocket disconnected');
     };
 
-    ws.onerror = (e) => log('WS error', e?.message || e);
+    ws.onerror = (e) => {
+      log('⚠️ WebSocket error:', e?.message || e);
+      if (wsStatus) {
+        wsStatus.textContent = 'Error';
+        wsStatus.classList.remove('connected');
+        wsStatus.classList.add('disconnected');
+      }
+    };
 
     ws.onmessage = async (ev) => {
       try {
-        const m = JSON.parse(ev.data);
-        await handleIncomingRelay(m);
+        const msg = JSON.parse(ev.data);
+        await handleIncomingRelay(msg);
       } catch (err) {
         log('Bad WS message or parse error:', err?.message || err);
       }
@@ -124,6 +149,24 @@ wsConnectBtn?.addEventListener('click', () => {
     alert('WebSocket connect failed: ' + (err?.message || err));
   }
 });
+
+// Disconnect button handling
+const wsDisconnectBtn = $('ws-disconnect');
+if (wsDisconnectBtn) {
+  wsDisconnectBtn.addEventListener('click', () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.close();
+      log('WebSocket connection closed by user.');
+      if (wsStatus) {
+        wsStatus.textContent = 'Disconnected';
+        wsStatus.classList.add('disconnected');
+        wsStatus.classList.remove('connected');
+      }
+      wsConnectBtn.disabled = false;
+      wsDisconnectBtn.disabled = true;
+    }
+  });
+}
 
 // Simple send helper
 function sendRelay(obj) {

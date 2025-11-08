@@ -199,6 +199,84 @@ pre#log {
   transform: scale(0.96);
 }
 
+/* Notification areas for Alice and Bob */
+.notification-area {
+  background: #111;
+  border: 1px solid #333;
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  color: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.notify-text {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+#left-decrypt-btn,
+#right-decrypt-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.2s, transform 0.1s;
+}
+
+#left-decrypt-btn:hover,
+#right-decrypt-btn:hover {
+  background: #2563eb;
+}
+
+#left-decrypt-btn:active,
+#right-decrypt-btn:active {
+  transform: scale(0.96);
+}
+
+/* Relay server connection console enhancements */
+.console {
+  background: #0a0a0a;
+  border-top: 1px solid #222;
+  padding: 10px;
+  color: #ccc;
+}
+
+.console h3 {
+  margin-top: 0;
+  color: #58a6ff;
+}
+
+.relay-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+#ws-status.connected {
+  color: #4ade80;
+}
+
+#ws-status.disconnected {
+  color: #f87171;
+}
+
+.relay-log {
+  background: #111;
+  border: 1px solid #333;
+  padding: 8px;
+  border-radius: 6px;
+  height: 150px;
+  overflow-y: auto;
+}
+
 @media (max-width: 900px) {
   .panel {
     width: 100%;
