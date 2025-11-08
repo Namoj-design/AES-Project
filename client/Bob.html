@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🔐 CipherChat — Bob</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="dark">
+  <header>
+    <h1>🔐 CipherChat — Bob</h1>
+    <button id="theme-toggle" class="theme-toggle">🌙 Dark</button>
+  </header>
+
+  <div class="container">
+    <div class="box" id="bob">
+      <h3>👨‍💻 Bob</h3>
+      <button id="right-gen">Generate Bob Keypair</button>
+      <label>Bob public key (base64)</label>
+      <textarea id="right-pub" readonly></textarea>
+
+      <label>Paste Alice public key here</label>
+      <textarea id="right-peer"></textarea>
+
+      <button id="right-derive">Derive AES Key (Bob)</button>
+      <div id="right-status" class="status"></div>
+
+      <label>Plaintext to send</label>
+      <input type="text" id="right-input" placeholder="Message for Alice..." />
+      <button id="right-send">Send</button>
+
+      <label>Chat Window</label>
+      <div id="right-chat" class="chat"></div>
+
+      <p id="right-notify" class="notify"></p>
+      <button id="right-decrypt-btn" disabled>🔓 View Cipher & Decrypt</button>
+    </div>
+  </div>
+
+  <footer>
+    <h3>Relay Connection</h3>
+    <input type="text" id="ws-url" value="ws://localhost:8080" />
+    <button id="ws-connect">Connect Relay</button>
+    <span id="ws-status" class="status"></span>
+  </footer>
+
+  <div id="log" class="log"></div>
+  <script type="module" src="./script.js"></script>
+</body>
+</html>

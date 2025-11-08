@@ -257,38 +257,44 @@ async function handleIncomingRelay(msg) {
         const iv = msg.iv || '';
         const ct = msg.ct || '';
 
-        // Log message routing details
-        log('📨 Relay delivered cipher packet → from:', from, 'to:', target, '| current role:', role);
+        log(`📨 Cipher arrived → from: ${from} to: ${target}`);
 
-        if (role === target) {
-          const ivShort = iv.slice(0, 8) + '...';
-          const ctShort = ct.slice(0, 40) + '...';
+        const ivShort = iv.slice(0, 8) + '...';
+        const ctShort = ct.slice(0, 40) + '...';
 
-          if (role === 'right') {
-            latestCipher.right = { iv, ct };
-            rightNotifyText.textContent = '📩 New encrypted message received from Alice.';
-            rightDecryptBtn.disabled = false;
+        // When Alice sends (left → right)
+        if (from === 'left' && target === 'right') {
+          latestCipher.right = { iv, ct };
+          if (rightNotifyText) rightNotifyText.textContent = '📩 New encrypted message received from Alice.';
+          if (rightDecryptBtn) rightDecryptBtn.disabled = false;
+          if (rightChat) {
             UI.appendBubble(
               rightChat,
               `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}\nClick 🔔 View Cipher & Decrypt.`,
               'left'
             );
-            log('✅ Bob (right) displayed ciphertext from Alice.');
           }
+          log('✅ Bob (right) displayed ciphertext from Alice.');
+        }
 
-          if (role === 'left') {
-            latestCipher.left = { iv, ct };
-            leftNotifyText.textContent = '📩 New encrypted message received from Bob.';
-            leftDecryptBtn.disabled = false;
+        // When Bob sends (right → left)
+        if (from === 'right' && target === 'left') {
+          latestCipher.left = { iv, ct };
+          if (leftNotifyText) leftNotifyText.textContent = '📩 New encrypted message received from Bob.';
+          if (leftDecryptBtn) leftDecryptBtn.disabled = false;
+          if (leftChat) {
             UI.appendBubble(
               leftChat,
               `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}\nClick 🔔 View Cipher & Decrypt.`,
               'right'
-            );
-            log('✅ Alice (left) displayed ciphertext from Bob.');
+            );yhb  
           }
-        } else {
-          log(`💡 Ignored message — not for this client (role=${role}, target=${target})`);
+          log('✅ Alice (left) displayed ciphertext from Bob.');
+        }
+
+        // Always log message status
+        if (from !== 'left' && from !== 'right') {
+          log(`⚠️ Unrecognized sender "${from}" — message ignored.`);
         }
 
         return;
