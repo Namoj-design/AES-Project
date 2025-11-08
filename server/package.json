@@ -1,0 +1,15 @@
+{
+    "name": "secure-chat-relay",
+    "version": "1.0.0",
+    "description": "Simple WebSocket relay for secure demo (does not inspect messages)",
+    "main": "server.js",
+    "scripts": {
+      "start": "node server.js"
+    },
+    "dependencies": {
+      "ws": "^8.13.0"
+    },
+    "engines": {
+      "node": ">=14"
+    }
+  }
