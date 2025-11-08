@@ -33,6 +33,18 @@ const rightChat = $('right-chat');
 const rightInput = $('right-input');
 const rightSend = $('right-send');
 
+// Notification elements for Alice and Bob
+const leftNotifyText = $('left-notify');
+const leftDecryptBtn = $('left-decrypt-btn');
+const rightNotifyText = $('right-notify');
+const rightDecryptBtn = $('right-decrypt-btn');
+
+// Store latest received ciphertext data
+let latestCipher = {
+  left: null,
+  right: null
+};
+
 // WebSocket & log
 const wsUrlInput = $('ws-url');
 const wsConnectBtn = $('ws-connect');
@@ -147,36 +159,24 @@ async function handleIncomingRelay(msg) {
 
       if (targetSide === 'left') {
         // Alice receives encrypted message from Bob
+        latestCipher.left = { iv, ct };
+        if (leftNotifyText) leftNotifyText.textContent = 'New encrypted message from Bob received.';
+        if (leftDecryptBtn) leftDecryptBtn.disabled = false;
+
         if (leftChat) {
-          UI.appendBubble(leftChat, `🔒 Encrypted message from Bob:\nCiphertext: ${ctShort}\nIV: ${ivShort}`, 'right');
+          UI.appendBubble(leftChat, `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}`, 'right');
         }
-        if (left.aes) {
-          try {
-            const pt = await C.decryptAesGcmBase64(left.aes, iv, ct);
-            UI.appendBubble(leftChat, `🟢 Decrypted: ${pt}`, 'right');
-            log('Alice decrypted message from Bob:', pt);
-          } catch (e) {
-            log('Alice decrypt failed:', e?.message || e);
-          }
-        } else {
-          log('Alice AES key not ready. Ciphertext stored.');
-        }
+        log('Alice received encrypted message from Bob.');
       } else if (targetSide === 'right') {
         // Bob receives encrypted message from Alice
+        latestCipher.right = { iv, ct };
+        if (rightNotifyText) rightNotifyText.textContent = 'New encrypted message from Alice received.';
+        if (rightDecryptBtn) rightDecryptBtn.disabled = false;
+
         if (rightChat) {
-          UI.appendBubble(rightChat, `🔒 Encrypted message from Alice:\nCiphertext: ${ctShort}\nIV: ${ivShort}`, 'left');
+          UI.appendBubble(rightChat, `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}`, 'left');
         }
-        if (right.aes) {
-          try {
-            const pt = await C.decryptAesGcmBase64(right.aes, iv, ct);
-            UI.appendBubble(rightChat, `🟢 Decrypted: ${pt}`, 'left');
-            log('Bob decrypted message from Alice:', pt);
-          } catch (e) {
-            log('Bob decrypt failed:', e?.message || e);
-          }
-        } else {
-          log('Bob AES key not ready. Ciphertext stored.');
-        }
+        log('Bob received encrypted message from Alice.');
       }
       return;
     }
@@ -427,6 +427,35 @@ if (rightVerifyBtn) rightVerifyBtn.addEventListener('click', async () => {
   } catch (err) {
     log('Right verify error:', err?.message || err);
     alert('Verify failed: ' + (err?.message || err));
+  }
+});
+
+// Notification Decrypt Buttons
+if (leftDecryptBtn) leftDecryptBtn.addEventListener('click', async () => {
+  try {
+    const data = latestCipher.left;
+    if (!data || !left.aes) { alert('No cipher or key to decrypt.'); return; }
+    const pt = await C.decryptAesGcmBase64(left.aes, data.iv, data.ct);
+    UI.appendBubble(leftChat, `🟢 Decrypted from Bob: ${pt}`, 'right');
+    leftNotifyText.textContent = 'Message decrypted successfully.';
+    leftDecryptBtn.disabled = true;
+    log('Alice manually decrypted message:', pt);
+  } catch (err) {
+    alert('Decrypt failed: ' + (err?.message || err));
+  }
+});
+
+if (rightDecryptBtn) rightDecryptBtn.addEventListener('click', async () => {
+  try {
+    const data = latestCipher.right;
+    if (!data || !right.aes) { alert('No cipher or key to decrypt.'); return; }
+    const pt = await C.decryptAesGcmBase64(right.aes, data.iv, data.ct);
+    UI.appendBubble(rightChat, `🟢 Decrypted from Alice: ${pt}`, 'left');
+    rightNotifyText.textContent = 'Message decrypted successfully.';
+    rightDecryptBtn.disabled = true;
+    log('Bob manually decrypted message:', pt);
+  } catch (err) {
+    alert('Decrypt failed: ' + (err?.message || err));
   }
 });
 
