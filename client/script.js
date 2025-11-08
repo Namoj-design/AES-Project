@@ -203,70 +203,66 @@ if (wsDisconnectBtn) {
   });
 }
 
-// Simple send helper
-function sendRelay(obj) {
-  if (!ensureWsConnected()) {
-    log('Cannot send: WebSocket not connected.');
-    alert('WebSocket relay is not connected. Click Connect or use copy/paste fallback.');
-    return;
-  }
+// Clean and reliable sendRelay function
+function sendRelay(data) {
   try {
-    ws.send(JSON.stringify(obj));
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      log('⚠️ Relay not connected. Cannot send message.');
+      alert('Relay not connected. Please click "Connect Relay" first.');
+      return;
+    }
+    data.timestamp = new Date().toISOString();
+    ws.send(JSON.stringify(data));
+    log('📤 Sent via relay:', data.type, 'from', data.from, '→', data.target);
   } catch (err) {
-    log('Failed to send via relay:', err?.message || err);
+    log('Send relay error:', err.message || err);
   }
 }
 
-// Handle messages from relay
+// Handle all messages received from relay
 async function handleIncomingRelay(msg) {
   try {
     if (!msg || !msg.type) return;
 
-    if (msg.type === 'theme') {
-      handleThemeUpdate(msg.theme);
-      return;
-    }
+    switch (msg.type) {
+      case 'theme':
+        handleThemeUpdate(msg.theme);
+        return;
 
-    if (msg.type === 'pubkey') {
-      log('relay: pubkey from', msg.side);
-      if (msg.side === 'left' && leftPubTa && !leftPubTa.value) leftPubTa.value = msg.pub;
-      if (msg.side === 'right' && rightPubTa && !rightPubTa.value) rightPubTa.value = msg.pub;
-      return;
-    }
+      case 'pubkey':
+        log('relay: received pubkey from', msg.side);
+        if (msg.side === 'left' && rightPeerTa) rightPeerTa.value = msg.pub;
+        if (msg.side === 'right' && leftPeerTa) leftPeerTa.value = msg.pub;
+        return;
 
-    if (msg.type === 'cipher') {
-      const targetSide = msg.target;
-      const { iv, ct, from } = msg;
-      const ivShort = iv.slice(0, 10) + '...';
-      const ctShort = ct.slice(0, 50) + '...';
+      case 'cipher': {
+        const { from, target, iv, ct } = msg;
+        const ivShort = iv.slice(0, 8) + '...';
+        const ctShort = ct.slice(0, 40) + '...';
 
-      if (targetSide === 'left') {
-        // Alice receives encrypted message from Bob
-        latestCipher.left = { iv, ct };
-        if (leftNotifyText) leftNotifyText.textContent = 'New encrypted message from Bob received.';
-        if (leftDecryptBtn) leftDecryptBtn.disabled = false;
-
-        if (leftChat) {
-          UI.appendBubble(leftChat, `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}`, 'right');
-        }
-        log('Alice received encrypted message from Bob.');
-      } else if (targetSide === 'right') {
-        // Bob receives encrypted message from Alice
-        latestCipher.right = { iv, ct };
-        if (rightNotifyText) rightNotifyText.textContent = 'New encrypted message from Alice received.';
-        if (rightDecryptBtn) rightDecryptBtn.disabled = false;
-
-        if (rightChat) {
+        if (target === 'right') {
+          // Bob receives from Alice
+          latestCipher.right = { iv, ct };
+          rightNotifyText.textContent = '📩 New message received from Alice.';
+          rightDecryptBtn.disabled = false;
           UI.appendBubble(rightChat, `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}`, 'left');
+          log('📨 Bob received ciphertext from Alice.');
+        } else if (target === 'left') {
+          // Alice receives from Bob
+          latestCipher.left = { iv, ct };
+          leftNotifyText.textContent = '📩 New message received from Bob.';
+          leftDecryptBtn.disabled = false;
+          UI.appendBubble(leftChat, `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}`, 'right');
+          log('📨 Alice received ciphertext from Bob.');
         }
-        log('Bob received encrypted message from Alice.');
+        return;
       }
-      return;
-    }
 
-    log('relay: unknown message type', msg.type);
+      default:
+        log('relay: unknown message type', msg.type);
+    }
   } catch (err) {
-    log('handleIncomingRelay error:', err?.message || err);
+    log('❌ handleIncomingRelay error:', err.message || err);
   }
 }
 
@@ -513,32 +509,39 @@ if (rightVerifyBtn) rightVerifyBtn.addEventListener('click', async () => {
   }
 });
 
-// Notification Decrypt Buttons
+// Left (Alice) decrypt
 if (leftDecryptBtn) leftDecryptBtn.addEventListener('click', async () => {
   try {
     const data = latestCipher.left;
-    if (!data || !left.aes) { alert('No cipher or key to decrypt.'); return; }
+    if (!data || !left.aes) {
+      alert('No cipher or key to decrypt.');
+      return;
+    }
     const pt = await C.decryptAesGcmBase64(left.aes, data.iv, data.ct);
-    UI.appendBubble(leftChat, `Decrypted from Bob: ${pt}`, 'right');
+    UI.appendBubble(leftChat, `🟢 Decrypted from Bob: ${pt}`, 'right');
     leftNotifyText.textContent = 'Message decrypted successfully.';
     leftDecryptBtn.disabled = true;
-    log('Alice manually decrypted message:', pt);
+    log('✅ Alice decrypted message:', pt);
   } catch (err) {
-    alert('Decrypt failed: ' + (err?.message || err));
+    alert('Decrypt failed: ' + (err.message || err));
   }
 });
 
+// Right (Bob) decrypt
 if (rightDecryptBtn) rightDecryptBtn.addEventListener('click', async () => {
   try {
     const data = latestCipher.right;
-    if (!data || !right.aes) { alert('No cipher or key to decrypt.'); return; }
+    if (!data || !right.aes) {
+      alert('No cipher or key to decrypt.');
+      return;
+    }
     const pt = await C.decryptAesGcmBase64(right.aes, data.iv, data.ct);
-    UI.appendBubble(rightChat, `Decrypted from Alice: ${pt}`, 'left');
+    UI.appendBubble(rightChat, `🟢 Decrypted from Alice: ${pt}`, 'left');
     rightNotifyText.textContent = 'Message decrypted successfully.';
     rightDecryptBtn.disabled = true;
-    log('Bob manually decrypted message:', pt);
+    log('✅ Bob decrypted message:', pt);
   } catch (err) {
-    alert('Decrypt failed: ' + (err?.message || err));
+    alert('Decrypt failed: ' + (err.message || err));
   }
 });
 
