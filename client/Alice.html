@@ -6,6 +6,9 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="dark">
+  <!-- Animated binary background -->
+  <div class="matrix" id="matrix"></div>
+
   <header>
     <h1>🔐 CipherChat — Alice</h1>
     <button id="theme-toggle" class="theme-toggle">🌙 Dark</button>
@@ -44,6 +47,25 @@
   </footer>
 
   <div id="log" class="log"></div>
+
+  <script>
+    // Matrix animation effect
+    const matrix = document.getElementById("matrix");
+    const numStreams = 50;
+
+    for (let i = 0; i < numStreams; i++) {
+      const span = document.createElement("span");
+      span.textContent = Math.random() > 0.5 ? "1" : "0";
+      span.style.left = `${Math.random() * 100}%`;
+      span.style.animationDuration = `${3 + Math.random() * 3}s`;
+      span.style.animationDelay = `${Math.random() * 5}s`;
+      matrix.appendChild(span);
+      setInterval(() => {
+        span.textContent = Math.random() > 0.5 ? "1" : "0";
+      }, 300);
+    }
+  </script>
+
   <script type="module" src="./script.js"></script>
 </body>
 </html>
