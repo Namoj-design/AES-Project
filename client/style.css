@@ -307,42 +307,48 @@ pre#log {
   overflow-y: auto;
 }
 
-/* Theme Toggle Button Styling */
+/* Floating Theme Toggle Button (Right-side placement) */
 #theme-toggle {
+  position: fixed;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 50px;
-  padding: 6px 14px;
+  border-radius: 50%;
+  width: 52px;
+  height: 52px;
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 1.3rem;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 #theme-toggle:hover {
   background: #2563eb;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
 #theme-toggle:active {
-  transform: scale(0.96);
+  transform: translateY(-50%) scale(0.95);
 }
 
-/* Light mode adjustments for button */
+/* Light mode adjustments */
 body.light #theme-toggle {
   background: #e0e7ff;
   color: #0b1220;
   border: 1px solid #c7d2fe;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 body.light #theme-toggle:hover {
   background: #c7d2fe;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 @media (max-width: 900px) {
