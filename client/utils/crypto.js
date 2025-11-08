@@ -96,32 +96,33 @@ export async function deriveAesKeyFromECDH(myPrivate, peerPublic, myPubRaw, peer
    AES-GCM encryption/decryption
 ------------------------------------------------------------- */
 
-/** Encrypt plaintext → {iv, ct} (both Base64) */
-export async function encryptAesGcmBase64(aesKey, plaintext, aad = undefined) {
+/** AES-GCM encrypt → returns {iv, ct} (both Base64) */
+export async function encryptAesGcmBase64(aesKey, plaintext, aad = null) {
   try {
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const ctBuf = await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv, additionalData: aad ? encoder.encode(aad) : undefined, tagLength: 128 },
-      aesKey,
-      encoder.encode(plaintext)
-    );
-    return { iv: arrayBufferToBase64(iv.buffer), ct: arrayBufferToBase64(ctBuf) };
+    const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV
+    const algo = { name: "AES-GCM", iv, tagLength: 128 };
+    if (aad) algo.additionalData = encoder.encode(aad);
+
+    const ctBuf = await crypto.subtle.encrypt(algo, aesKey, encoder.encode(plaintext));
+    return {
+      iv: arrayBufferToBase64(iv.buffer),
+      ct: arrayBufferToBase64(ctBuf)
+    };
   } catch (err) {
     console.error('encryptAesGcmBase64 failed:', err);
     throw err;
   }
 }
 
-/** Decrypt ciphertext → plaintext string */
-export async function decryptAesGcmBase64(aesKey, ivB64, ctB64, aad = undefined) {
+/** AES-GCM decrypt with base64 inputs */
+export async function decryptAesGcmBase64(aesKey, ivB64, ctB64, aad = null) {
   try {
-    const iv = base64ToArrayBuffer(ivB64);
+    const iv = new Uint8Array(base64ToArrayBuffer(ivB64));
     const ct = base64ToArrayBuffer(ctB64);
-    const plainBuf = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: new Uint8Array(iv), additionalData: aad ? encoder.encode(aad) : undefined, tagLength: 128 },
-      aesKey,
-      ct
-    );
+    const algo = { name: "AES-GCM", iv, tagLength: 128 };
+    if (aad) algo.additionalData = encoder.encode(aad);
+
+    const plainBuf = await crypto.subtle.decrypt(algo, aesKey, ct);
     return decoder.decode(plainBuf);
   } catch (err) {
     console.error('decryptAesGcmBase64 failed:', err);
