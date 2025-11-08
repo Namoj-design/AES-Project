@@ -45,6 +45,10 @@ let latestCipher = {
   right: null
 };
 
+// Identify this client as "left" or "right" based on DOM presence
+const role = document.getElementById('left-chat') ? 'left' : 'right';
+log('👤 This client role detected as:', role);
+
 // WebSocket & log
 const wsUrlInput = $('ws-url');
 const wsConnectBtn = $('ws-connect');
@@ -219,7 +223,7 @@ function sendRelay(data) {
   }
 }
 
-// Handle all messages received from relay
+// Handle all messages received from relay with role-based routing
 async function handleIncomingRelay(msg) {
   try {
     if (!msg || !msg.type) return;
@@ -237,24 +241,43 @@ async function handleIncomingRelay(msg) {
 
       case 'cipher': {
         const { from, target, iv, ct } = msg;
+        if (!iv || !ct) {
+          log('⚠️ Received invalid cipher packet');
+          return;
+        }
+
         const ivShort = iv.slice(0, 8) + '...';
         const ctShort = ct.slice(0, 40) + '...';
 
-        if (target === 'right') {
-          // Bob receives from Alice
-          latestCipher.right = { iv, ct };
-          rightNotifyText.textContent = '📩 New message received from Alice.';
-          rightDecryptBtn.disabled = false;
-          UI.appendBubble(rightChat, `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}`, 'left');
-          log('📨 Bob received ciphertext from Alice.');
-        } else if (target === 'left') {
-          // Alice receives from Bob
-          latestCipher.left = { iv, ct };
-          leftNotifyText.textContent = '📩 New message received from Bob.';
-          leftDecryptBtn.disabled = false;
-          UI.appendBubble(leftChat, `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}`, 'right');
-          log('📨 Alice received ciphertext from Bob.');
+        // Role-based check: process only if intended for this client
+        if (role === target) {
+          if (role === 'right') {
+            latestCipher.right = { iv, ct };
+            rightNotifyText.textContent = '📩 New encrypted message received from Alice.';
+            rightDecryptBtn.disabled = false;
+            UI.appendBubble(
+              rightChat,
+              `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}\nClick 🔔 View Cipher & Decrypt.`,
+              'left'
+            );
+            log('📨 Bob (right) received ciphertext from Alice.');
+          }
+
+          if (role === 'left') {
+            latestCipher.left = { iv, ct };
+            leftNotifyText.textContent = '📩 New encrypted message received from Bob.';
+            leftDecryptBtn.disabled = false;
+            UI.appendBubble(
+              leftChat,
+              `🔒 Ciphertext: ${ctShort}\nIV: ${ivShort}\nClick 🔔 View Cipher & Decrypt.`,
+              'right'
+            );
+            log('📨 Alice (left) received ciphertext from Bob.');
+          }
+        } else {
+          log('💡 Ignored message not meant for this client (role:', role, ', target:', target, ')');
         }
+
         return;
       }
 
@@ -318,7 +341,7 @@ if (leftSend) leftSend.addEventListener('click', async () => {
     if (!msg) return;
     const { iv, ct } = await C.encryptAesGcmBase64(left.aes, msg);
     if (leftChat) UI.appendBubble(leftChat, `🟢 You: ${msg}`, 'left');
-    sendRelay({ type: 'cipher', from: 'left', target: 'right', iv, ct });
+    sendRelay({ type: 'cipher', from: 'left', target: 'right', iv, ct, sender: 'left' });
     leftInput.value = '';
     log('Alice sent encrypted message to Bob:', ct.slice(0, 40) + '...');
   } catch (err) {
@@ -379,7 +402,7 @@ if (rightSend) rightSend.addEventListener('click', async () => {
     if (!msg) return;
     const { iv, ct } = await C.encryptAesGcmBase64(right.aes, msg);
     if (rightChat) UI.appendBubble(rightChat, ` You: ${msg}`, 'right');
-    sendRelay({ type: 'cipher', from: 'right', target: 'left', iv, ct });
+    sendRelay({ type: 'cipher', from: 'right', target: 'left', iv, ct, sender: 'right' });
     rightInput.value = '';
     log('Bob sent encrypted message to Alice:', ct.slice(0, 40) + '...');
   } catch (err) {
