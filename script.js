@@ -1,129 +1,75 @@
-// Utility helpers
-const enc = new TextEncoder();
-const dec = new TextDecoder();
-
-const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
-const fromB64 = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+const logBox = document.getElementById("log");
 const log = msg => {
-  const logBox = document.getElementById('log');
-  logBox.textContent += msg + "\n";
+  const time = new Date().toLocaleTimeString();
+  logBox.innerHTML += `[${time}] ${msg}\n`;
   logBox.scrollTop = logBox.scrollHeight;
 };
 
-// Global states
-let aliceKeys, aliceAES, bobKeys, bobAES;
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
-// === WebCrypto core ===
-async function genECDH() {
-  return crypto.subtle.generateKey(
-    { name: 'ECDH', namedCurve: 'P-256' },
+let aesKey = null;
+let iv = null;
+
+// --- Generate AES Key ---
+async function generateAESKey() {
+  aesKey = await crypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
     true,
-    ['deriveKey', 'deriveBits']
+    ["encrypt", "decrypt"]
   );
+  log("✅ AES-256 key generated successfully.");
 }
 
-async function exportPub(key) {
-  const raw = await crypto.subtle.exportKey('raw', key);
-  return toB64(raw);
-}
+// --- Encrypt Message ---
+async function encryptMessage() {
+  const text = document.getElementById("plaintext").value;
+  if (!text) return alert("Enter plaintext first!");
+  if (!aesKey) return alert("Generate the AES key first!");
 
-async function importPub(b64) {
-  const raw = fromB64(b64).buffer;
-  return crypto.subtle.importKey('raw', raw, { name: 'ECDH', namedCurve: 'P-256' }, true, []);
-}
+  iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = encoder.encode(text);
 
-async function deriveAESGCMKey(priv, pub) {
-  return crypto.subtle.deriveKey(
-    { name: 'ECDH', public: pub },
-    priv,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    aesKey,
+    encoded
   );
+
+  const ctBase64 = btoa(String.fromCharCode(...new Uint8Array(ciphertext)));
+  document.getElementById("ciphertext").value = ctBase64;
+  document.getElementById("iv-display").value = Array.from(iv).map(x => x.toString(16).padStart(2, "0")).join(" ");
+
+  log(`🔐 Encrypted "${text}" with AES-GCM.`);
+  log(`IV: [${Array.from(iv).map(x => x.toString(16).padStart(2, '0')).join(' ')}]`);
+  log(`Ciphertext length: ${ciphertext.byteLength} bytes`);
 }
 
-function randomIV() {
-  const iv = new Uint8Array(12);
-  crypto.getRandomValues(iv);
-  return iv;
-}
+// --- Decrypt Message ---
+async function decryptMessage() {
+  if (!aesKey) return alert("Generate AES key first!");
+  if (!iv) return alert("No IV found. Encrypt something first!");
 
-async function aesGcmEncrypt(key, plaintext, aad = '') {
-  const iv = randomIV();
-  const cipher = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv, additionalData: enc.encode(aad), tagLength: 128 },
-    key,
-    enc.encode(plaintext)
-  );
-  return { iv: toB64(iv.buffer), ct: toB64(cipher) };
-}
+  const ctBase64 = document.getElementById("ciphertext").value.trim();
+  if (!ctBase64) return alert("No ciphertext to decrypt!");
 
-async function aesGcmDecrypt(key, ivB64, ctB64, aad = '') {
-  const iv = fromB64(ivB64);
-  const cipher = fromB64(ctB64);
-  const plain = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv, additionalData: enc.encode(aad), tagLength: 128 },
-    key,
-    cipher.buffer
-  );
-  return dec.decode(plain);
-}
-
-// === ALICE ===
-document.getElementById('alice-gen').onclick = async () => {
-  aliceKeys = await genECDH();
-  const pub = await exportPub(aliceKeys.publicKey);
-  document.getElementById('alice-pub').value = pub;
-  log('[Alice] Keypair generated.');
-  document.getElementById('alice-status').textContent = 'Public key ready.';
-};
-
-document.getElementById('alice-derive').onclick = async () => {
-  const peer = document.getElementById('alice-peer').value.trim();
-  if (!peer) return alert('Paste Bob public key first.');
-  const peerKey = await importPub(peer);
-  aliceAES = await deriveAESGCMKey(aliceKeys.privateKey, peerKey);
-  document.getElementById('alice-status').textContent = 'Shared AES key derived.';
-  log('[Alice] Derived AES key.');
-};
-
-document.getElementById('alice-encrypt').onclick = async () => {
-  if (!aliceAES) return alert('Derive AES key first.');
-  const msg = document.getElementById('alice-plaintext').value;
-  const { iv, ct } = await aesGcmEncrypt(aliceAES, msg, 'alice-msg');
-  document.getElementById('alice-ciphertext').value = iv + '|' + ct;
-  log('[Alice] Encrypted message ready.');
-};
-
-// === BOB ===
-document.getElementById('bob-gen').onclick = async () => {
-  bobKeys = await genECDH();
-  const pub = await exportPub(bobKeys.publicKey);
-  document.getElementById('bob-pub').value = pub;
-  log('[Bob] Keypair generated.');
-  document.getElementById('bob-status').textContent = 'Public key ready.';
-};
-
-document.getElementById('bob-derive').onclick = async () => {
-  const peer = document.getElementById('bob-peer').value.trim();
-  if (!peer) return alert('Paste Alice public key first.');
-  const peerKey = await importPub(peer);
-  bobAES = await deriveAESGCMKey(bobKeys.privateKey, peerKey);
-  document.getElementById('bob-status').textContent = 'Shared AES key derived.';
-  log('[Bob] Derived AES key.');
-};
-
-document.getElementById('bob-decrypt').onclick = async () => {
-  if (!bobAES) return alert('Derive AES key first.');
-  const blob = document.getElementById('bob-recv').value.trim();
-  const [iv, ct] = blob.split('|');
-  if (!iv || !ct) return alert('Invalid ciphertext format.');
+  const bytes = Uint8Array.from(atob(ctBase64), c => c.charCodeAt(0));
   try {
-    const msg = await aesGcmDecrypt(bobAES, iv, ct, 'alice-msg');
-    document.getElementById('bob-plaintext').value = msg;
-    log('[Bob] Decrypted message: ' + msg);
+    const plainBuffer = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      aesKey,
+      bytes
+    );
+    const decryptedText = decoder.decode(plainBuffer);
+    document.getElementById("decrypted").value = decryptedText;
+    log(`✅ Decrypted successfully. Message: "${decryptedText}"`);
   } catch (err) {
-    alert('Decryption failed: ' + err.message);
-    log('[Bob] Auth/decrypt error.');
+    log(`❌ Decryption failed: ${err.message}`);
+    alert("Decryption failed (possible IV/key mismatch).");
   }
-};
+}
+
+// --- Bind Buttons ---
+document.getElementById("generate-key").addEventListener("click", generateAESKey);
+document.getElementById("encrypt-btn").addEventListener("click", encryptMessage);
+document.getElementById("decrypt-btn").addEventListener("click", decryptMessage);
