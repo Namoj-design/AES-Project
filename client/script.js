@@ -1,118 +1,201 @@
-const enc = new TextEncoder();
-const dec = new TextDecoder();
-const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
-const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+// client/script.js
+import * as C from './utils/crypto.js';
+import * as UI from './utils/ui.js';
 
-/* ----- Crypto helpers ----- */
-async function genECDH(){return crypto.subtle.generateKey({name:"ECDH",namedCurve:"P-256"},true,["deriveKey"]);}
-async function exportPub(k){return toB64(await crypto.subtle.exportKey("raw",k));}
-async function importPub(b64){return crypto.subtle.importKey("raw",fromB64(b64).buffer,{name:"ECDH",namedCurve:"P-256"},true,[]);}
-async function deriveAES(priv, pub){
-  return crypto.subtle.deriveKey({name:"ECDH",public:pub},priv,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
-}
-function randIV(){const v=new Uint8Array(12);crypto.getRandomValues(v);return v;}
-async function aesEnc(key, msg){
-  const iv=randIV();
-  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,enc.encode(msg));
-  return {iv:toB64(iv.buffer), ct:toB64(ct)};
-}
-async function aesDec(key, ivB64, ctB64){
-  const iv=fromB64(ivB64);const ct=fromB64(ctB64);
-  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ct.buffer);
-  return dec.decode(pt);
-}
+const leftGenBtn = document.getElementById('left-gen');
+const leftSendPubBtn = document.getElementById('left-sendpub');
+const leftPubTa = document.getElementById('left-pub');
+const leftPeerTa = document.getElementById('left-peer');
+const leftDeriveBtn = document.getElementById('left-derive');
+const leftStatus = document.getElementById('left-status');
+const leftChat = document.getElementById('left-chat');
+const leftInput = document.getElementById('left-input');
+const leftSend = document.getElementById('left-send');
 
-/* ----- State ----- */
-let alice={}; let bob={};
+const rightGenBtn = document.getElementById('right-gen');
+const rightSendPubBtn = document.getElementById('right-sendpub');
+const rightPubTa = document.getElementById('right-pub');
+const rightPeerTa = document.getElementById('right-peer');
+const rightDeriveBtn = document.getElementById('right-derive');
+const rightStatus = document.getElementById('right-status');
+const rightChat = document.getElementById('right-chat');
+const rightInput = document.getElementById('right-input');
+const rightSend = document.getElementById('right-send');
 
-/* ----- UI helper for bubbles ----- */
-function appendBubble(whoPanel, who, text){
-  const box=document.getElementById(whoPanel+"-chat");
-  const b=document.createElement("div");
-  b.className="bubble "+who;
-  b.textContent=text;
-  box.appendChild(b);
-  box.scrollTop=box.scrollHeight;
-}
+const wsUrlInput = document.getElementById('ws-url');
+const wsConnectBtn = document.getElementById('ws-connect');
+const wsStatus = document.getElementById('ws-status');
+const logPre = document.getElementById('log');
 
-/* ----- Alice actions ----- */
-document.getElementById("alice-gen").onclick=async()=>{
-  alice.keys=await genECDH();
-  document.getElementById("alice-pub").value=await exportPub(alice.keys.publicKey);
-  alert("Alice keypair ready. Copy her public key into Bob's box.");
-};
-document.getElementById("alice-derive").onclick=async()=>{
-  const peer=document.getElementById("alice-peer").value.trim();
-  const pub=await importPub(peer);
-  alice.aes=await deriveAES(alice.keys.privateKey,pub);
-  alert("Alice derived AES key.");
-};
-document.getElementById("alice-send").onclick=async()=>{
-  const msg=document.getElementById("alice-input").value.trim();
-  if(!msg||!alice.aes) return;
-  const {iv,ct}=await aesEnc(alice.aes,msg);
-  const payload=iv+"|"+ct;
-  document.getElementById("bob-recvbuf").value=payload; // hidden buffer
-  appendBubble("alice","alice",msg);
-  appendBubble("bob","alice","(encrypted msg received)");
-  document.getElementById("alice-input").value="";
-};
+let ws = null;
 
-/* ----- Bob actions ----- */
-document.getElementById("bob-gen").onclick=async()=>{
-  bob.keys=await genECDH();
-  document.getElementById("bob-pub").value=await exportPub(bob.keys.publicKey);
-  alert("Bob keypair ready. Copy his public key into Alice's box.");
-};
-document.getElementById("bob-derive").onclick=async()=>{
-  const peer=document.getElementById("bob-peer").value.trim();
-  const pub=await importPub(peer);
-  bob.aes=await deriveAES(bob.keys.privateKey,pub);
-  alert("Bob derived AES key.");
-};
-document.getElementById("bob-send").onclick=async()=>{
-  const msg=document.getElementById("bob-input").value.trim();
-  if(!msg||!bob.aes) return;
-  const {iv,ct}=await aesEnc(bob.aes,msg);
-  const payload=iv+"|"+ct;
-  document.getElementById("alice-recvbuf").value=payload;
-  appendBubble("bob","bob",msg);
-  appendBubble("alice","bob","(encrypted msg received)");
-  document.getElementById("bob-input").value="";
+// state objects
+const left = { keys: null, pubRaw: null, aes: null };
+const right = { keys: null, pubRaw: null, aes: null };
+
+// ------- helpers -------
+function toB64(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+function fromB64ToBuf(s) { return C.base64ToArrayBuffer(s); }
+function log(...args) { UI.logToConsole(logPre, ...args); }
+
+// ------- WebSocket relay handling -------
+wsConnectBtn.onclick = () => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.close();
+    return;
+  }
+  const url = wsUrlInput.value.trim();
+  ws = new WebSocket(url);
+  ws.onopen = () => { wsStatus.textContent = 'connected'; log('WS connected to', url); };
+  ws.onclose = () => { wsStatus.textContent = 'disconnected'; log('WS disconnected'); };
+  ws.onerror = (e) => { log('WS error', e.message || e); };
+  ws.onmessage = async (ev) => {
+    try {
+      const m = JSON.parse(ev.data);
+      await handleIncomingRelay(m);
+    } catch (e) { log('Bad WS message', e); }
+  };
 };
 
-/* ----- Hidden buffers for local transfer ----- */
-["alice","bob"].forEach(side=>{
-  const hidden=document.createElement("textarea");
-  hidden.id=side+"-recvbuf";
-  hidden.style.display="none";
-  document.body.appendChild(hidden);
-});
-
-/* ----- Auto-decrypt simulation ----- */
-setInterval(async()=>{
-  // Alice decrypt incoming
-  if(alice.aes){
-    const data=document.getElementById("alice-recvbuf").value;
-    if(data){
-      const [iv,ct]=data.split("|");
-      try{
-        const msg=await aesDec(alice.aes,iv,ct);
-        appendBubble("alice","bob",msg);
-      }catch{}
-      document.getElementById("alice-recvbuf").value="";
+// minimal protocol: { type: 'pubkey'|'cipher', side:'left'|'right', pub:..., iv:..., ct:... }
+async function handleIncomingRelay(msg) {
+  if (msg.type === 'pubkey') {
+    log('relay: pubkey from', msg.side);
+    if (msg.side === 'left') {
+      // left public key arrived at this client => populate left pub area only if empty
+      if (!leftPubTa.value) leftPubTa.value = msg.pub;
+      // if other side is remote, we broadcast accordingly
+    } else if (msg.side === 'right') {
+      if (!rightPubTa.value) rightPubTa.value = msg.pub;
+    }
+  } else if (msg.type === 'cipher') {
+    // deliver ciphertext to appropriate panel
+    const target = msg.target === 'left' ? left : right;
+    // append placeholder 'encrypted received', then attempt decrypt if key ready
+    if (msg.target === 'left') {
+      UI.appendBubble(leftChat, '(encrypted msg received)', 'right');
+      if (left.aes) {
+        try {
+          const pt = await C.decryptAesGcmBase64(left.aes, msg.iv, msg.ct);
+          UI.appendBubble(leftChat, pt, 'right');
+          log('left decrypted a message');
+        } catch (e) { log('left decrypt failed', e.message); }
+      } else {
+        log('left has no AES key yet');
+      }
+    } else {
+      UI.appendBubble(rightChat, '(encrypted msg received)', 'left');
+      if (right.aes) {
+        try {
+          const pt = await C.decryptAesGcmBase64(right.aes, msg.iv, msg.ct);
+          UI.appendBubble(rightChat, pt, 'left');
+          log('right decrypted a message');
+        } catch (e) { log('right decrypt failed', e.message); }
+      } else {
+        log('right has no AES key yet');
+      }
     }
   }
-  // Bob decrypt incoming
-  if(bob.aes){
-    const data=document.getElementById("bob-recvbuf").value;
-    if(data){
-      const [iv,ct]=data.split("|");
-      try{
-        const msg=await aesDec(bob.aes,iv,ct);
-        appendBubble("bob","alice",msg);
-      }catch{}
-      document.getElementById("bob-recvbuf").value="";
-    }
+}
+
+// send helper
+function sendRelay(obj) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    log('WS not connected — cannot send to relay. Use local transfer (copy/paste) or connect.');
+    return;
   }
-},600);
+  ws.send(JSON.stringify(obj));
+}
+
+// ------- left side operations -------
+leftGenBtn.onclick = async () => {
+  left.keys = await C.genECDH();
+  const raw = await crypto.subtle.exportKey('raw', left.keys.publicKey);
+  left.pubRaw = new Uint8Array(raw);
+  leftPubTa.value = C.arrayBufferToBase64(raw);
+  leftSendPubBtn.disabled = false;
+  log('Left keypair generated.');
+  leftStatus.textContent = 'Keypair ready';
+};
+
+leftSendPubBtn.onclick = () => {
+  if (!leftPubTa.value) return;
+  sendRelay({ type: 'pubkey', side: 'left', pub: leftPubTa.value });
+  log('Broadcasted left public key to relay.');
+};
+
+leftDeriveBtn.onclick = async () => {
+  try {
+    if (!left.keys) throw new Error('left keys missing');
+    const peerB64 = leftPeerTa.value.trim();
+    if (!peerB64) throw new Error('paste peer public key in left-peer');
+    const peerPub = await C.importPublicKeyBase64(peerB64);
+    const peerRaw = C.base64ToArrayBuffer(peerB64);
+    left.aes = await C.deriveAesKeyFromECDH(left.keys.privateKey, peerPub, left.pubRaw.buffer, peerRaw);
+    leftStatus.textContent = 'AES key derived';
+    leftSend.disabled = false;
+    log('Left derived AES key (HKDF over ECDH).');
+  } catch (e) {
+    log('Left derive error:', e.message);
+  }
+};
+
+leftSend.onclick = async () => {
+  if (!left.aes) return alert('Left must derive AES key first');
+  const msg = leftInput.value.trim();
+  if (!msg) return;
+  const { iv, ct } = await C.encryptAesGcmBase64(left.aes, msg);
+  // local UI: show plaintext bubble on left chat
+  UI.appendBubble(leftChat, msg, 'left');
+  // send ciphertext to relay (target right)
+  sendRelay({ type: 'cipher', from: 'left', target: 'right', iv, ct });
+  leftInput.value = '';
+  log('Left sent encrypted message (relay).');
+};
+
+// ------- right side operations -------
+rightGenBtn.onclick = async () => {
+  right.keys = await C.genECDH();
+  const raw = await crypto.subtle.exportKey('raw', right.keys.publicKey);
+  right.pubRaw = new Uint8Array(raw);
+  rightPubTa.value = C.arrayBufferToBase64(raw);
+  rightSendPubBtn.disabled = false;
+  log('Right keypair generated.');
+  rightStatus.textContent = 'Keypair ready';
+};
+
+rightSendPubBtn.onclick = () => {
+  if (!rightPubTa.value) return;
+  sendRelay({ type: 'pubkey', side: 'right', pub: rightPubTa.value });
+  log('Broadcasted right public key to relay.');
+};
+
+rightDeriveBtn.onclick = async () => {
+  try {
+    if (!right.keys) throw new Error('right keys missing');
+    const peerB64 = rightPeerTa.value.trim();
+    if (!peerB64) throw new Error('paste peer public key in right-peer');
+    const peerPub = await C.importPublicKeyBase64(peerB64);
+    const peerRaw = C.base64ToArrayBuffer(peerB64);
+    right.aes = await C.deriveAesKeyFromECDH(right.keys.privateKey, peerPub, right.pubRaw.buffer, peerRaw);
+    rightStatus.textContent = 'AES key derived';
+    rightSend.disabled = false;
+    log('Right derived AES key (HKDF over ECDH).');
+  } catch (e) {
+    log('Right derive error:', e.message);
+  }
+};
+
+rightSend.onclick = async () => {
+  if (!right.aes) return alert('Right must derive AES key first');
+  const msg = rightInput.value.trim();
+  if (!msg) return;
+  const { iv, ct } = await C.encryptAesGcmBase64(right.aes, msg);
+  UI.appendBubble(rightChat, msg, 'left'); // right->left bubble UI (shows on right panel aligned left)
+  sendRelay({ type: 'cipher', from: 'right', target: 'left', iv, ct });
+  rightInput.value = '';
+  log('Right sent encrypted message (relay).');
+};
+
+// small UI features: clicking public key selects text for copy
+[leftPubTa, rightPubTa].forEach(el => el.addEventListener('click', () => el.select()));
