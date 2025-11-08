@@ -1,4 +1,4 @@
-/* === Base layout === */
+/* === Base Layout === */
 body {
     font-family: 'SF Mono', Consolas, monospace;
     background-color: #000;
@@ -10,7 +10,7 @@ body {
     height: 100vh;
   }
   
-  /* === Background Animation (Falling 0s and 1s) === */
+  /* === Matrix Background Animation === */
   @keyframes matrixRain {
     0% { transform: translateY(-100%); opacity: 0; }
     50% { opacity: 1; }
@@ -37,7 +37,7 @@ body {
     animation: matrixRain linear infinite;
   }
   
-  /* === Foreground UI === */
+  /* === Header Section === */
   header {
     display: flex;
     justify-content: space-between;
@@ -55,6 +55,7 @@ body {
     text-shadow: 0 0 8px #00ffb3;
   }
   
+  /* === Theme Toggle Button === */
   .theme-toggle {
     border: 1px solid #00ffb3;
     background: rgba(0, 255, 179, 0.1);
@@ -70,6 +71,7 @@ body {
     background: rgba(0, 255, 179, 0.3);
   }
   
+  /* === Main Container === */
   .container {
     display: flex;
     justify-content: center;
@@ -79,6 +81,7 @@ body {
     position: relative;
   }
   
+  /* === Chat Box === */
   .box {
     background: rgba(10, 15, 20, 0.8);
     border: 1px solid #00ff88;
@@ -93,6 +96,7 @@ body {
     color: #7efcd2;
   }
   
+  /* === Input Areas === */
   input, textarea {
     width: 100%;
     background: rgba(0, 0, 0, 0.8);
@@ -111,6 +115,7 @@ body {
     outline: none;
   }
   
+  /* === Buttons === */
   button {
     background: linear-gradient(90deg, #00ff88, #00ccff);
     color: #000;
@@ -129,6 +134,7 @@ body {
     transform: scale(1.03);
   }
   
+  /* === Chat Area === */
   .chat {
     background: rgba(0, 0, 0, 0.7);
     border: 1px solid #00ffb3;
@@ -141,6 +147,7 @@ body {
     color: #9efad6;
   }
   
+  /* === Notifications and Status === */
   .notify {
     color: #ffea00;
     font-size: 13px;
@@ -153,19 +160,26 @@ body {
     margin-top: 4px;
   }
   
+  /* === Activity Log (bottom console) === */
   .log {
     background: rgba(0, 0, 0, 0.7);
     border-top: 1px solid #00ffb3;
     padding: 10px;
     color: #00ffaa;
-    height: 120px;
+    height: 95px; /* Slightly reduced */
     overflow-y: auto;
     font-size: 12px;
-    z-index: 2;
-    position: relative;
+    position: fixed;
+    bottom: 40px; /* Lifted upward for visibility */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 85%;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 255, 200, 0.3);
+    z-index: 5;
   }
   
-  /* === Light mode === */
+  /* === Light Mode === */
   body.light {
     background-color: #f6f7fb;
     color: #222;
