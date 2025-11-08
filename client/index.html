@@ -5,6 +5,7 @@
   <title>CipherChat — E2E demo (ECDH + HKDF + AES-GCM)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="style.css">
+  <script type="module" src="script.js"></script>
 </head>
 <body>
   <header>
@@ -31,6 +32,13 @@
         <input id="left-input" placeholder="Message to Bob">
         <button id="left-send" disabled>Send</button>
       </div>
+
+      <section class="blockchain-actions">
+        <h3>Blockchain Actions</h3>
+        <button id="left-connect-metamask">Connect MetaMask</button>
+        <button id="left-register-key" disabled>Register Key On-Chain</button>
+        <button id="left-verify-peer" disabled>Verify Peer Key</button>
+      </section>
     </section>
 
     <section class="panel" id="right-panel">
@@ -51,6 +59,13 @@
         <input id="right-input" placeholder="Message to Alice">
         <button id="right-send" disabled>Send</button>
       </div>
+
+      <section class="blockchain-actions">
+        <h3>Blockchain Actions</h3>
+        <button id="right-connect-metamask">Connect MetaMask</button>
+        <button id="right-register-key" disabled>Register Key On-Chain</button>
+        <button id="right-verify-peer" disabled>Verify Peer Key</button>
+      </section>
     </section>
   </main>
 
