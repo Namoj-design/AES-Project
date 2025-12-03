@@ -27,7 +27,3 @@ It visually showcases how **Alice** and **Bob** can securely exchange messages t
 | **Key Exchange** | ECDH using Curve P-256 |
 | **Backend (Relay)** | Node.js + WebSocket (`ws` library) |
 | **Style Theme** | Matrix-style cyber aesthetic with binary rain animation |
-
----
-
-## 🏗️ Project Structure
